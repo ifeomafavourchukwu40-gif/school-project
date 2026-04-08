@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage Invoices</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content">
+      <div id="mobileShell"></div>
+      
+      <div class="card" id="invoiceFilterCard" style="margin-bottom: 20px;">
+        <h2 style="margin:0 0 10px 0">Invoice Management</h2>
+        <div style="display: flex; gap: 10px; align-items: flex-end;">
+            <div style="flex: 1;">
+                <label>Select Student</label>
+                <select id="studentSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+                    <option value="">-- Choose Student --</option>
+                </select>
+            </div>
+            <div style="width: 150px;">
+                <label>Session</label>
+                <select id="sessionSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+                    <option value="2025/2026">2025/2026</option>
+                    <option value="2024/2025">2024/2025</option>
+                    <option value="2023/2024">2023/2024</option>
+                </select>
+            </div>
+            <div style="width: 150px;">
+                <label>Term</label>
+                <select id="termSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+                    <option value="First Term">First Term</option>
+                    <option value="Second Term">Second Term</option>
+                    <option value="Third Term">Third Term</option>
+                </select>
+            </div>
+            <button class="btn" onclick="loadInvoice()">Load/Create Invoice</button>
+        </div>
+      </div>
+
+      <div id="invoiceArea" style="display: none;">
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px;">
+                <div>
+                    <h3 id="invNo" style="margin:0;">Invoice: #---</h3>
+                    <div id="invStudent" class="muted">Student Name</div>
+                </div>
+                <div id="invStatus" style="font-weight: bold; padding: 4px 12px; border-radius: 20px;">UNPAID</div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 1px solid var(--border);">
+                        <th style="padding: 10px;">Item Description</th>
+                        <th style="padding: 10px; text-align: right;">Amount</th>
+                        <th style="padding: 10px; text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="invoiceItemsList">
+                    <!-- Items -->
+                </tbody>
+                <tfoot>
+                    <tr style="font-weight: bold; border-top: 2px solid var(--border);">
+                        <td style="padding: 10px;">Total</td>
+                        <td style="padding: 10px; text-align: right;" id="invTotal">₦0.00</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div id="addItemRow" style="margin-top: 20px; display: flex; gap: 10px; align-items: flex-end; padding-top: 15px; border-top: 1px dashed var(--border);">
+                <div style="flex: 1;">
+                    <label>New Item</label>
+                    <input id="newItemName" placeholder="e.g. Late Fee, Music Class" style="margin:0;">
+                </div>
+                <div style="width: 150px;">
+                    <label>Amount (₦)</label>
+                    <input id="newItemAmount" type="number" placeholder="0.00" style="margin:0;">
+                </div>
+                <button class="btn secondary" onclick="addItem()">Add Item</button>
+            </div>
+
+            <div class="btnrow" style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
+                <button class="btn danger" id="markPaidBtn" onclick="updateStatus('PAID')">Mark as Paid</button>
+                <button class="btn secondary" id="markUnpaidBtn" onclick="updateStatus('UNPAID')" style="display:none;">Mark as Unpaid</button>
+                <button class="btn" onclick="window.print()">Print Invoice</button>
+            </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, renderSidebar } from "../assets/js/app.js";
+    import { mountMobileShell } from "../assets/js/mobile-shell.js";
+    import { apiGet, apiPost } from "../assets/js/storage.js";
+
+    requireAuth();
+    renderSidebar();
+    mountMobileShell("invoice");
+
+    let currentInvoice = null;
+
+    async function init() {
+        // Load students for dropdown
+        try {
+            const students = await apiGet('../api/students.php?action=list');
+            const settings = await apiGet('../api/settings.php?action=school');
+            
+            const sel = document.getElementById('studentSelect');
+            students.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = `${s.fullName} (${s.classLevel})`;
+                sel.appendChild(opt);
+            });
+
+            // Set global defaults
+            if (settings.current_year) document.getElementById('sessionSelect').value = settings.current_year;
+            if (settings.current_term) document.getElementById('termSelect').value = settings.current_term;
+
+            // Check if studentId is in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const sid = urlParams.get('studentId');
+            if (sid) {
+                document.getElementById('studentSelect').value = sid;
+                loadInvoice();
+            }
+        } catch (err) { console.error(err); }
+    }
+
+    window.loadInvoice = async () => {
+        const studentId = document.getElementById('studentSelect').value;
+        const term = document.getElementById('termSelect').value;
+        const year = document.getElementById('sessionSelect').value;
+        
+        if (!studentId) {
+            alert("Please select a student");
+            return;
+        }
+
+        try {
+            const res = await apiPost('../api/invoices.php?action=open_or_create', {
+                studentId,
+                term,
+                year
+            });
+            
+            renderInvoice(res);
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
+    function renderInvoice(inv) {
+        currentInvoice = inv;
+        document.getElementById('invoiceArea').style.display = 'block';
+        document.getElementById('invNo').textContent = `Invoice: #${inv.invoiceNo}`;
+        
+        const student = document.getElementById('studentSelect').selectedOptions[0].textContent;
+        document.getElementById('invStudent').textContent = student;
+        
+        const statusEl = document.getElementById('invStatus');
+        statusEl.textContent = inv.status;
+        statusEl.className = ''; // reset
+        if (inv.status === 'PAID') {
+            statusEl.style.backgroundColor = 'rgba(40,167,69,0.1)';
+            statusEl.style.color = 'green';
+            document.getElementById('markPaidBtn').style.display = 'none';
+            document.getElementById('markUnpaidBtn').style.display = 'inline-block';
+            document.getElementById('addItemRow').style.display = 'none';
+        } else {
+            statusEl.style.backgroundColor = 'rgba(220,53,69,0.1)';
+            statusEl.style.color = 'red';
+            document.getElementById('markPaidBtn').style.display = 'inline-block';
+            document.getElementById('markUnpaidBtn').style.display = 'none';
+            document.getElementById('addItemRow').style.display = 'flex';
+        }
+
+        const tbody = document.getElementById('invoiceItemsList');
+        let total = 0;
+        tbody.innerHTML = inv.items.map(item => {
+            total += parseFloat(item.amount);
+            return `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 10px;">${item.name}</td>
+                    <td style="padding: 10px; text-align: right;">₦${parseFloat(item.amount).toLocaleString()}</td>
+                    <td style="padding: 10px; text-align: right;">
+                        ${inv.status === 'UNPAID' ? `<button class="btn danger" style="padding:4px 8px; font-size:10px;" onclick="removeItem('${item.id}')">Remove</button>` : ''}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        document.getElementById('invTotal').textContent = `₦${total.toLocaleString()}`;
+    }
+
+    window.addItem = async () => {
+        const name = document.getElementById('newItemName').value;
+        const amount = document.getElementById('newItemAmount').value;
+        if (!name || !amount) return;
+
+        try {
+            await apiPost('../api/invoices.php?action=add_item', {
+                invoiceId: currentInvoice.id,
+                name,
+                amount
+            });
+            document.getElementById('newItemName').value = '';
+            document.getElementById('newItemAmount').value = '';
+            loadInvoice(); // Reload
+        } catch (err) { alert(err.message); }
+    };
+
+    window.removeItem = async (itemId) => {
+        if (!confirm("Remove this item?")) return;
+        try {
+            await apiPost('../api/invoices.php?action=remove_item', { itemId });
+            loadInvoice();
+        } catch (err) { alert(err.message); }
+    };
+
+    window.updateStatus = async (status) => {
+        try {
+            await apiPost('../api/invoices.php?action=update_status', {
+                id: currentInvoice.id,
+                status
+            });
+            loadInvoice();
+        } catch (err) { alert(err.message); }
+    };
+
+    init();
+  </script>
+  
+  <style>
+    @media print {
+        .sidebar, .btn, .btnrow, #addItemRow, .sidebar-overlay, .mobile-shell-header, #invoiceFilterCard { display: none !important; }
+        .content { margin: 0 !important; padding: 0 !important; background: white !important; }
+        .card { box-shadow: none !important; border: 1px solid #eee !important; width: 100% !important; margin: 0 !important; }
+        .wrap { display: block !important; }
+    }
+  </style>
+</body>
+</html>

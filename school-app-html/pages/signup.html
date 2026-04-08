@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign Up</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    body {
+      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('../assets/images/create.JPG');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .signup-container {
+      width: 100%;
+      max-width: 500px;
+      padding: 20px;
+      margin: 0 auto;
+    }
+    .card {
+      backdrop-filter: blur(8px);
+      background: rgba(var(--panel-rgb, 255, 255, 255), 0.95) !important;
+    }
+    html[data-theme="dark"] .card {
+      background: rgba(16, 26, 51, 0.9) !important;
+    }
+  </style>
+</head>
+<body>
+<div class="page-preloader" id="pagePreloader">
+  <img src="../assets/images/re-load.png" alt="Loading" class="preloader-image">
+</div>
+
+  <div class="signup-container">
+    <div class="card">
+      <h2 style="margin:0 0 6px;">Create Account</h2>
+      <div class="muted">Sign up to access the school portal.</div>
+
+      <div id="msg" class="card" style="display:none; margin-top:12px;"></div>
+
+      <!-- Step 1: Registration form -->
+      <form id="signupForm" style="margin-top:12px;">
+        <div class="formrow">
+          <div>
+            <label>First Name</label>
+            <input name="firstName" required placeholder="First name" />
+          </div>
+          <div>
+            <label>Last Name</label>
+            <input name="lastName" required placeholder="Last name" />
+          </div>
+        </div>
+        <label>Middle Name <span class="muted">(optional)</span></label>
+        <input name="middleName" placeholder="Middle name" />
+
+        <label>Role</label>
+        <select name="role" required style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg); margin-bottom:12px;">
+          <option value="student">Student</option>
+          <option value="admin">Administrator</option>
+        </select>
+
+        <label>Email</label>
+        <input name="email" type="email" required placeholder="example@email.com" />
+
+        <label>Password <span class="muted">(min 6 characters)</span></label>
+        <input name="password" type="password" required placeholder="••••••" minlength="6" />
+
+        <div class="btnrow" style="margin-top:16px;">
+          <button class="btn" type="submit" id="signupBtn">Create Account</button>
+          <a class="btn secondary" href="./login.html">Already have an account?</a>
+        </div>
+      </form>
+
+      <!-- Step 2: Verification code entry -->
+      <form id="verifyForm" style="display:none; margin-top:12px;">
+        <div class="muted" style="margin-bottom:16px; padding:12px; background:var(--bg-alt); border-radius:8px; border:1px solid var(--border);">
+          A 6-digit verification code has been generated for your account.<br>
+          <span id="mockCodeDisplay" style="font-size:13px; color:orange;"></span>
+        </div>
+
+        <label>Enter Verification Code</label>
+        <input id="verifyCode" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code" required
+          style="font-size:24px; letter-spacing:8px; text-align:center;" />
+
+        <div class="btnrow" style="margin-top:16px;">
+          <button class="btn" type="submit" id="verifyBtn">Verify Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { getSession, setSession, apiPost } from "../assets/js/storage.js";
+    import { initTheme } from "../assets/js/app.js";
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const p = document.getElementById('pagePreloader');
+        if (p) p.classList.add('fade-out');
+      }, 500);
+    });
+
+    initTheme();
+
+    if (getSession()) location.href = './home.html';
+
+    const signupForm  = document.getElementById('signupForm');
+    const verifyForm  = document.getElementById('verifyForm');
+    const msg         = document.getElementById('msg');
+    let   pendingEmail = '';
+
+    function showMsg(text, isError = false) {
+      msg.style.display     = 'block';
+      msg.style.borderColor = isError ? 'rgba(255,0,0,.35)' : 'var(--border)';
+      msg.textContent       = text;
+    }
+
+    // ── Step 1: Submit signup ────────────────────────────────────────────────
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('signupBtn');
+      btn.disabled = true; btn.textContent = 'Creating account…';
+
+      const data = Object.fromEntries(new FormData(signupForm).entries());
+      pendingEmail = data.email;
+
+      try {
+        const res = await apiPost('../api/auth.php?action=signup', data);
+        signupForm.style.display = 'none';
+        verifyForm.style.display = 'block';
+
+        // Show the mock code (since no real email service)
+        if (res.mockCode) {
+          document.getElementById('mockCodeDisplay').textContent =
+            `Your verification code is: ${res.mockCode}`;
+        }
+        showMsg('Account created! Enter the verification code below.', false);
+      } catch(err) {
+        showMsg(err.message || 'Signup failed', true);
+        btn.disabled    = false;
+        btn.textContent = 'Create Account';
+      }
+    });
+
+    // ── Step 2: Submit verification code ────────────────────────────────────
+    verifyForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn  = document.getElementById('verifyBtn');
+      const code = document.getElementById('verifyCode').value.trim();
+      btn.disabled = true; btn.textContent = 'Verifying…';
+
+      try {
+        const res = await apiPost('../api/auth.php?action=verify', {
+          email: pendingEmail,
+          code,
+        });
+        setSession({ userId: res.id, role: res.role });
+        showMsg('Verified! Redirecting to dashboard…', false);
+        setTimeout(() => { location.href = './home.html'; }, 800);
+      } catch(err) {
+        showMsg(err.message || 'Verification failed', true);
+        btn.disabled    = false;
+        btn.textContent = 'Verify Account';
+      }
+    });
+  </script>
+</body>
+</html>

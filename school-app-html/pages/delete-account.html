@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Delete Account</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <!-- Page Preloader -->
+  <div class="page-preloader" id="pagePreloader">
+    <img src="../assets/images/re-load.png" alt="Loading" class="preloader-image">
+  </div>
+  
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content" style="max-width:700px">
+      <div id="mobileShell"></div>
+      
+      <div class="card">
+        <h2 style="margin:0 0 8px">Delete Account</h2>
+        <div class="muted">
+          This action is permanent. Enter your password to confirm.
+        </div>
+      </div>
+      
+      <div id="msg" class="card" style="display:none;margin-top:14px"></div>
+      
+      <div class="card" style="margin-top:14px">
+        <form id="delForm">
+          <label>Password</label>
+          <input name="password" type="password" required placeholder="Enter password to confirm" />
+          <div class="btnrow">
+            <button class="btn danger" type="submit">Delete Account</button>
+            <a class="btn secondary" href="./home.html">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, renderSidebar, currentUser } from "../assets/js/app.js";
+    import { mountMobileShell } from "../assets/js/mobile-shell.js";
+    import { db, getSession, logout } from "../assets/js/storage.js";
+    
+    // Hide preloader when page is fully loaded
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const preloader = document.getElementById('pagePreloader');
+        if (preloader) {
+          preloader.classList.add('fade-out');
+        }
+      }, 500);
+    });
+    
+    requireAuth();
+    renderSidebar();
+    mountMobileShell("delete");
+    
+    const msg = document.getElementById("msg");
+    const form = document.getElementById("delForm");
+    
+    function showMessage(text, isError=false){
+      msg.style.display = "block";
+      msg.style.borderColor = isError ? "rgba(255,0,0,.35)" : "var(--border)";
+      msg.textContent = text;
+    }
+    
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const session = getSession();
+      const user = currentUser();
+      if (!session || !user) return;
+      
+      const password = new FormData(form).get("password");
+      const users = db.read("users", []);
+      const found = users.find(u => u.id === session.userId);
+      
+      if (!found || found.password !== password){
+        showMessage("Incorrect password. Please try again.", true);
+        return;
+      }
+      
+      const updated = users.filter(u => u.id !== session.userId);
+      db.write("users", updated);
+      
+      showMessage("Account deleted. Logging you out...", false);
+      setTimeout(() => logout(), 800);
+    });
+  </script>
+</body>
+</html>

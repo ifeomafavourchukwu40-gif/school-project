@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+
+<body>
+  <!-- Page Preloader -->
+  <div class="page-preloader" id="pagePreloader">
+    <img src="../assets/images/re-load.png" alt="Loading" class="preloader-image">
+  </div>
+
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content">
+      <div id="mobileShell"></div>
+
+      <section class="hero" style="margin-bottom:14px">
+        <div class="hero-inner">
+          <img class="logo" src="../assets/images/logo.png" alt="logo">
+          <div class="school">
+            <div class="name">
+              <span class="school-name-full">El-anNexus Academy</span>
+              <span class="school-name-short">El-AN</span>
+            </div>
+            <div class="addr muted">Off Last Oil well, Etche Rivers State</div>
+          </div>
+
+          <div style="margin-left:auto; display:flex; gap:10px; align-items:center; z-index:100; position:relative;" id="scopeSelectors">
+            <div style="text-align:right;">
+              <label
+                style="font-size:10px; text-transform:uppercase; color:var(--fg-muted); display:block;">Session</label>
+              <select id="globalSession"
+                style="padding:4px 8px; border-radius:4px; font-size:13px; border:1px solid var(--border); background:var(--bg); color:var(--fg); cursor:pointer;">
+                <option value="2025/2026">2025/2026</option>
+                <option value="2024/2025">2024/2025</option>
+                <option value="2023/2024">2023/2024</option>
+              </select>
+            </div>
+            <div style="text-align:right;">
+              <label
+                style="font-size:10px; text-transform:uppercase; color:var(--fg-muted); display:block;">Term</label>
+              <select id="globalTerm"
+                style="padding:4px 8px; border-radius:4px; font-size:13px; border:1px solid var(--border); background:var(--bg); color:var(--fg); cursor:pointer;">
+                <option value="First Term">First Term</option>
+                <option value="Second Term">Second Term</option>
+                <option value="Third Term">Third Term</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+
+      <div class="card" style="margin-top:14px">
+        <h2 style="margin:0 0 10px 0">Welcome</h2>
+        <div class="muted" id="welcomeSubtext">
+          Use the buttons above to manage the school portal.
+        </div>
+      </div>
+
+      <!-- Student Section: Only shows if role is student -->
+      <div id="studentFeeSummary" style="display: none;">
+        <div class="card" style="margin-top: 14px; border-left: 5px solid var(--blue);">
+          <h3 style="margin:0 0 10px 0">Outstanding Fees</h3>
+          <div id="feeListSnippet" class="muted" style="margin-bottom: 15px;">Loading your fee details...</div>
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 10px;">
+            <div style="font-weight: bold; font-size: 1.2rem;" id="totalBalance">₦0.00</div>
+            <a href="./pay-fees.html" class="btn" id="payBtnEl">Pay Now</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, renderSidebar, currentUser } from "../assets/js/app.js";
+    import { mountMobileShell } from "../assets/js/mobile-shell.js";
+    import { apiGet, apiPost } from "../assets/js/storage.js";
+
+    // Hide preloader when page is fully loaded
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const preloader = document.getElementById('pagePreloader');
+        if (preloader) preloader.classList.add('fade-out');
+      }, 500);
+    });
+
+    async function initDashboard() {
+      try {
+        const session = requireAuth();
+        if (!session) return;
+
+        renderSidebar();
+        mountMobileShell("home");
+
+        const user = await currentUser();
+        if (!user) return;
+
+        // Global Scope Logic
+        const sessionSel = document.getElementById('globalSession');
+        const termSel = document.getElementById('globalTerm');
+
+        const school = await apiGet('../api/settings.php?action=school');
+        const vYear = localStorage.getItem('view_year');
+        const vTerm = localStorage.getItem('view_term');
+
+        if (sessionSel) sessionSel.value = vYear || school.current_year || "2025/2026";
+        if (termSel) termSel.value = vTerm || school.current_term || "First Term";
+
+        if (sessionSel) {
+          sessionSel.addEventListener('change', async () => {
+            localStorage.setItem('view_year', sessionSel.value);
+            if (user.role === 'admin') await apiPost('../api/settings.php?action=save_session', { session: sessionSel.value });
+            location.reload();
+          });
+        }
+        if (termSel) {
+          termSel.addEventListener('change', async () => {
+            localStorage.setItem('view_term', termSel.value);
+            if (user.role === 'admin') await apiPost('../api/settings.php?action=save_term', { term: termSel.value });
+            location.reload();
+          });
+        }
+
+        if (user.role === 'admin') {
+          document.getElementById('welcomeSubtext').textContent = "Select a module from the sidebar or the buttons above to manage school operations.";
+        } else {
+          // Student View
+          const adminBtns = document.getElementById('adminActionBtns');
+          if (adminBtns) adminBtns.style.display = 'none';
+
+          document.getElementById('welcomeSubtext').textContent = `Hello ${user.firstName}, welcome to your student dashboard. Check your fee status below.`;
+
+          const summaryCard = document.getElementById('studentFeeSummary');
+          if (summaryCard) summaryCard.style.display = 'block';
+
+          // Priority for student view: local storage override or global default
+          const params = new URLSearchParams();
+          if (vYear) params.append('year', vYear);
+          if (vTerm) params.append('term', vTerm);
+
+          const data = await apiGet('../api/fees.php?action=my_fees&' + params.toString());
+          const fees = data.fees || [];
+          
+          let unpaidTotal = 0;
+          fees.forEach(f => {
+             if (f.payStatus === 'unpaid') unpaidTotal += f.amount;
+          });
+            
+          document.getElementById('totalBalance').textContent = `₦${unpaidTotal.toLocaleString()}`;
+          
+          const snippet = document.getElementById('feeListSnippet');
+          const payBtn = document.getElementById('payBtnEl');
+
+          if (fees.length === 0) {
+              snippet.textContent = `No fee items found for ${data.classLevel || 'your current level'} this term.`;
+              if (payBtn) payBtn.style.display = 'none';
+          } else {
+              snippet.innerHTML = `Your assigned fees for <b>${data.term}</b> &mdash; <b>${data.session}</b>.<br> <a href="./pay-fees.html" style="color:var(--blue); text-decoration:underline; font-size:13px;">View full breakdown</a>`;
+              if (payBtn) {
+                  payBtn.style.display = unpaidTotal > 0 ? 'inline-block' : 'none';
+              }
+          }
+        }
+      } catch (err) {
+        console.error("Dashboard error:", err);
+      }
+    }
+
+    initDashboard();
+  </script>
+</body>
+
+</html>

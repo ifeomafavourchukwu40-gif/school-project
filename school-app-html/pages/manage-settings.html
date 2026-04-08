@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>App Settings</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+<div class="page-preloader" id="pagePreloader">
+  <img src="../assets/images/re-load.png" alt="Loading" class="preloader-image">
+</div>
+
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content">
+      <div id="mobileShell"></div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <h2 style="margin:0 0 6px 0;">Payment Gateway Integration</h2>
+        <div class="muted">Enter your Paystack API keys to enable instant card/transfer payments for students. Get these from your <a href="https://dashboard.paystack.com/#/settings/developer" target="_blank" style="color:var(--blue); text-decoration:underline;">Paystack Dashboard</a>.</div>
+
+        <div style="margin-top:20px;">
+          <label>Paystack Public Key</label>
+          <input type="text" id="pkInput" placeholder="pk_test_..." style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg); margin-bottom:16px;">
+
+          <label>Paystack Secret Key</label>
+          <input type="password" id="skInput" placeholder="sk_test_..." style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+        </div>
+
+        <div class="btnrow" style="margin-top:20px;">
+          <button class="btn" id="saveKeysBtn" onclick="saveKeys()">Save Integration Keys</button>
+        </div>
+        <div id="saveMsg" style="display:none; margin-top:10px; font-weight:bold;"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, renderSidebar } from "../assets/js/app.js";
+    import { mountMobileShell } from "../assets/js/mobile-shell.js";
+    import { apiGet, apiPost } from "../assets/js/storage.js";
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const p = document.getElementById('pagePreloader');
+        if (p) p.classList.add('fade-out');
+      }, 500);
+    });
+
+    requireAuth();
+    renderSidebar();
+    mountMobileShell("manage-settings");
+
+    async function loadSettings() {
+      try {
+        const school = await apiGet('../api/settings.php?action=school');
+        if (school.paystack_public_key) document.getElementById('pkInput').value = school.paystack_public_key;
+        if (school.paystack_secret_key) document.getElementById('skInput').value = school.paystack_secret_key;
+      } catch(e) { console.error(e); }
+    }
+
+    window.saveKeys = async function() {
+      const btn = document.getElementById('saveKeysBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      const msg = document.getElementById('saveMsg');
+      
+      try {
+        await apiPost('../api/settings.php?action=save_paystack_keys', { 
+            public_key: document.getElementById('pkInput').value,
+            secret_key: document.getElementById('skInput').value 
+        });
+        msg.style.display = 'block';
+        msg.style.color = '#28a745';
+        msg.textContent   = 'Keys saved successfully!';
+        setTimeout(() => { msg.style.display = 'none'; }, 3000);
+      } catch(err) {
+        msg.style.display = 'block';
+        msg.style.color = 'red';
+        msg.textContent = 'Error: ' + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Integration Keys';
+      }
+    };
+
+    loadSettings();
+  </script>
+</body>
+</html>

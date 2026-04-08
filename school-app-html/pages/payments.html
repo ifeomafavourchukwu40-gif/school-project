@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Payment Approval</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content">
+      <div id="mobileShell"></div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
+          <div>
+            <h2 style="margin:0 0 4px 0;">Payment Monitoring</h2>
+            <div class="muted">View and approve all student payments.</div>
+          </div>
+
+          <!-- Filters -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <select id="filterStatus" onchange="loadPayments()" style="padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+              <option value="">All Payments</option>
+              <option value="pending">Pending Only</option>
+              <option value="success">Successful Only</option>
+            </select>
+            <select id="filterSession" onchange="loadPayments()" style="padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+              <option value="">All Sessions</option>
+              <option value="2025/2026">2025/2026</option>
+              <option value="2024/2025">2024/2025</option>
+              <option value="2023/2024">2023/2024</option>
+            </select>
+            <select id="filterTerm" onchange="loadPayments()" style="padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+              <option value="">All Terms</option>
+              <option value="First Term">First Term</option>
+              <option value="Second Term">Second Term</option>
+              <option value="Third Term">Third Term</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Summary cards -->
+        <div id="summaryCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:20px;"></div>
+
+        <!-- Payments table -->
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; text-align:left; min-width:680px;">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border);">
+                <th style="padding:10px;">Student</th>
+                <th style="padding:10px;">Class</th>
+                <th style="padding:10px;">Fee Type</th>
+                <th style="padding:10px;">Amount</th>
+                <th style="padding:10px;">Date</th>
+                <th style="padding:10px;">Status</th>
+                <th style="padding:10px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="paymentsBody">
+              <tr><td colspan="7" style="padding:30px; text-align:center;" class="muted">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, renderSidebar } from "../assets/js/app.js";
+    import { mountMobileShell } from "../assets/js/mobile-shell.js";
+    import { apiGet, apiPost } from "../assets/js/storage.js";
+
+    requireAuth();
+    renderSidebar();
+    mountMobileShell("invoice");
+
+    async function loadSummary() {
+      const session = document.getElementById('filterSession').value;
+      const term    = document.getElementById('filterTerm').value;
+      try {
+        const params = new URLSearchParams();
+        if (session) params.append('session', session);
+        if (term)    params.append('term',    term);
+        const s = await apiGet('../api/payments.php?action=summary&' + params.toString());
+
+        document.getElementById('summaryCards').innerHTML = `
+          <div class="card" style="margin:0; background:rgba(40,167,69,0.07); border-color:rgba(40,167,69,0.25);">
+            <div class="muted" style="font-size:11px; text-transform:uppercase;">Total Collected</div>
+            <div style="font-size:22px; font-weight:700; color:#28a745;">₦${parseFloat(s.total_paid||0).toLocaleString()}</div>
+            <div class="muted" style="font-size:12px;">${s.success_count||0} payments</div>
+          </div>
+          <div class="card" style="margin:0; background:rgba(255,165,0,0.07); border-color:rgba(255,165,0,0.25);">
+            <div class="muted" style="font-size:11px; text-transform:uppercase;">Pending Approval</div>
+            <div style="font-size:22px; font-weight:700; color:orange;">₦${parseFloat(s.total_pending||0).toLocaleString()}</div>
+            <div class="muted" style="font-size:12px;">${s.pending_count||0} awaiting</div>
+          </div>
+        `;
+      } catch(e) { /* non-critical */ }
+    }
+
+    window.loadPayments = async function() {
+      const tbody   = document.getElementById('paymentsBody');
+      tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center;" class="muted">Loading...</td></tr>';
+
+      const status  = document.getElementById('filterStatus').value;
+      const session = document.getElementById('filterSession').value;
+      const term    = document.getElementById('filterTerm').value;
+
+      const params = new URLSearchParams();
+      if (status)  params.append('status',  status);
+      if (session) params.append('session', session);
+      if (term)    params.append('term',    term);
+
+      try {
+        loadSummary();
+        const payments = await apiGet('../api/payments.php?action=list&' + params.toString());
+
+        if (!payments.length) {
+          tbody.innerHTML = '<tr><td colspan="7" style="padding:30px; text-align:center;" class="muted">No payments found.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = payments.map(p => {
+          const isPending = p.status === 'pending';
+          const isSuccess = p.status === 'success';
+          const statusBadge = isPending
+            ? '<span style="background:rgba(255,165,0,0.12); color:orange; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600;">PENDING</span>'
+            : '<span style="background:rgba(40,167,69,0.12); color:#28a745; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600;">SUCCESS</span>';
+
+          const feeLabel = p.fee_type
+            ? p.fee_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+            : '—';
+
+          const date = p.payment_date ? new Date(p.payment_date).toLocaleDateString('en-NG') : '—';
+
+          const actions = isPending
+            ? `<button class="btn" style="padding:5px 10px; font-size:12px; margin-right:4px;" onclick="approvePayment('${p.id}')">Approve</button>
+               <button class="btn" style="padding:5px 10px; font-size:12px; background:rgba(220,53,69,0.1); color:#dc3545; border:none;" onclick="rejectPayment('${p.id}')">Reject</button>`
+            : `<span class="muted" style="font-size:12px;">${p.receipt_no || '—'}</span>`;
+
+          return `<tr style="border-bottom:1px solid var(--border); ${isPending ? 'background:rgba(255,165,0,0.03);' : ''}">
+            <td style="padding:10px; font-weight:600;">${p.fullName || '—'}</td>
+            <td style="padding:10px;">${p.classLevel || '—'}</td>
+            <td style="padding:10px;">${feeLabel}</td>
+            <td style="padding:10px; font-weight:600;">₦${parseFloat(p.amount||0).toLocaleString()}</td>
+            <td style="padding:10px;" class="muted">${date}</td>
+            <td style="padding:10px;">${statusBadge}</td>
+            <td style="padding:10px;">${actions}</td>
+          </tr>`;
+        }).join('');
+      } catch(err) {
+        tbody.innerHTML = `<tr><td colspan="7" style="padding:20px; text-align:center; color:red;">${err.message}</td></tr>`;
+      }
+    };
+
+    window.approvePayment = async function(id) {
+      if (!confirm('Approve this payment? A receipt will be generated.')) return;
+      try {
+        const res = await apiPost('../api/payments.php?action=approve', { id });
+        alert('Payment approved! Receipt: ' + res.receipt_no);
+        loadPayments();
+      } catch(err) {
+        alert('Error: ' + err.message);
+      }
+    };
+
+    window.rejectPayment = async function(id) {
+      if (!confirm('Reject and remove this payment record?')) return;
+      try {
+        await apiPost('../api/payments.php?action=reject', { id });
+        loadPayments();
+      } catch(err) {
+        alert('Error: ' + err.message);
+      }
+    };
+
+    loadPayments();
+  </script>
+</body>
+</html>

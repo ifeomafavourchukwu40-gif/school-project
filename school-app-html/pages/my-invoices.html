@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Invoices</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="page-preloader" id="pagePreloader">
+    <img src="../assets/images/re-load.png" alt="Loading" class="preloader-image">
+  </div>
+
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content">
+      <div id="mobileShell"></div>
+      
+      <div class="card" style="margin-bottom: 20px;">
+        <h2 style="margin:0 0 10px 0">My Receipts & Invoices</h2>
+        <div class="muted">View your payment history and download/print your receipts for your records.</div>
+      </div>
+
+      <div id="invoiceListArea">
+          <div class="card">
+              <div id="loadingMsg" class="muted">Loading your invoices...</div>
+              <div id="invoicesContainer" style="display:none; overflow-x:auto;">
+                  <table style="width:100%; border-collapse:collapse;">
+                      <thead>
+                          <tr style="border-bottom:2px solid var(--border); text-align:left;">
+                              <th style="padding:10px;">Date</th>
+                              <th style="padding:10px;">Invoice No</th>
+                              <th style="padding:10px;">Academic Session</th>
+                              <th style="padding:10px;">Amount</th>
+                              <th style="padding:10px;">Status</th>
+                              <th style="padding:10px; text-align:right;">Action</th>
+                          </tr>
+                      </thead>
+                      <tbody id="invoicesTbody"></tbody>
+                  </table>
+              </div>
+          </div>
+      </div>
+
+      <div id="invoiceViewArea" style="display: none;">
+        <div class="card">
+            <button class="btn secondary" onclick="goBack()" style="margin-bottom:20px;">&larr; Back to List</button>
+
+            <div style="text-align:center; margin-bottom:20px;" class="print-header">
+                <img src="../assets/images/logo.png" style="width:60px;" alt="Logo">
+                <h2 style="margin:8px 0 2px;">Captain Elechi Amadi Polytechnic</h2>
+                <div class="muted" style="margin-bottom:14px;">School Address Here</div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px;">
+                <div>
+                    <h3 id="invNo" style="margin:0;">Invoice: #---</h3>
+                    <div id="invTerm" class="muted" style="margin-top:4px;">Term — Year</div>
+                </div>
+                <div>
+                    <div id="invStatus" style="font-weight: bold; padding: 4px 12px; border-radius: 20px;">UNPAID</div>
+                    <div id="invDate" class="muted" style="font-size:12px; margin-top:6px; text-align:right;">Date</div>
+                </div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 1px solid var(--border);">
+                        <th style="padding: 10px;">Fee Description</th>
+                        <th style="padding: 10px; text-align: right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="invoiceItemsList">
+                    <!-- Items -->
+                </tbody>
+                <tfoot>
+                    <tr style="font-weight: bold; border-top: 2px solid var(--border);">
+                        <td style="padding: 15px 10px; font-size:1.1rem;">Total Paid</td>
+                        <td style="padding: 15px 10px; text-align: right; font-size:1.1rem; color:var(--blue);" id="invTotal">₦0.00</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div class="btnrow" style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
+                <button class="btn" onclick="window.print()">Print Receipt</button>
+            </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, renderSidebar, currentUser } from "../assets/js/app.js";
+    import { mountMobileShell } from "../assets/js/mobile-shell.js";
+    import { apiGet } from "../assets/js/storage.js";
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const p = document.getElementById('pagePreloader');
+        if (p) p.classList.add('fade-out');
+      }, 500);
+    });
+
+    requireAuth();
+    renderSidebar();
+    mountMobileShell("my-invoices");
+
+    async function fetchInvoices() {
+        try {
+            const invoices = await apiGet('../api/invoices.php?action=my_invoices');
+            const tbody = document.getElementById('invoicesTbody');
+            document.getElementById('loadingMsg').style.display = 'none';
+            document.getElementById('invoicesContainer').style.display = 'block';
+
+            if (!invoices || invoices.length === 0) {
+                document.getElementById('invoicesContainer').innerHTML = "<div class='muted'>You have no invoices or receipts yet.</div>";
+                return;
+            }
+
+            tbody.innerHTML = invoices.map(i => {
+                const dateRaw = new Date(i.createdAt);
+                const dateStr = !isNaN(dateRaw) ? dateRaw.toLocaleDateString() : i.createdAt;
+                
+                let badge = '';
+                if (i.status === 'PAID') badge = `<span style="background:rgba(40,167,69,0.12); color:#28a745; padding:4px 8px; border-radius:4px; font-weight:600; font-size:11px;">PAID</span>`;
+                else badge = `<span style="background:rgba(220,53,69,0.12); color:#dc3545; padding:4px 8px; border-radius:4px; font-weight:600; font-size:11px;">UNPAID</span>`;
+
+                return `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding:12px;">${dateStr}</td>
+                    <td style="padding:12px; font-weight:bold;">${i.invoiceNo}</td>
+                    <td style="padding:12px;">${i.term} (${i.year})</td>
+                    <td style="padding:12px;">₦${parseFloat(i.totalAmount || 0).toLocaleString()}</td>
+                    <td style="padding:12px;">${badge}</td>
+                    <td style="padding:12px; text-align:right;">
+                        <button class="btn secondary" style="padding:6px 12px; font-size:12px;" onclick="viewInvoice('${i.id}')">View</button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        } catch (err) {
+            document.getElementById('loadingMsg').textContent = 'Error loading invoices: ' + err.message;
+            document.getElementById('loadingMsg').style.color = 'red';
+        }
+    }
+
+    window.viewInvoice = async (id) => {
+        try {
+            const inv = await apiGet('../api/invoices.php?action=get&id=' + id);
+            if (!inv) return alert("Invoice not found.");
+
+            document.getElementById('invoiceListArea').style.display = 'none';
+            document.getElementById('invoiceViewArea').style.display = 'block';
+
+            document.getElementById('invNo').textContent = `Receipt: #${inv.invoiceNo}`;
+            document.getElementById('invTerm').textContent = `${inv.term} — ${inv.year}`;
+            
+            const dateRaw = new Date(inv.createdAt);
+            document.getElementById('invDate').textContent = !isNaN(dateRaw) ? dateRaw.toLocaleString() : inv.createdAt;
+
+            const statusEl = document.getElementById('invStatus');
+            statusEl.textContent = inv.status;
+            statusEl.className = '';
+            if (inv.status === 'PAID') {
+                statusEl.style.backgroundColor = 'rgba(40,167,69,0.1)';
+                statusEl.style.color = 'green';
+            } else {
+                statusEl.style.backgroundColor = 'rgba(220,53,69,0.1)';
+                statusEl.style.color = 'red';
+            }
+
+            const tbody = document.getElementById('invoiceItemsList');
+            let total = 0;
+            tbody.innerHTML = inv.items.map(item => {
+                total += parseFloat(item.amount);
+                return `
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 12px 10px;">${item.name}</td>
+                        <td style="padding: 12px 10px; text-align: right; font-weight:bold;">₦${parseFloat(item.amount).toLocaleString()}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            document.getElementById('invTotal').textContent = `₦${total.toLocaleString()}`;
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
+    window.goBack = () => {
+        document.getElementById('invoiceListArea').style.display = 'block';
+        document.getElementById('invoiceViewArea').style.display = 'none';
+    };
+
+    fetchInvoices();
+  </script>
+  
+  <style>
+    .print-header { display: none; }
+    @media print {
+        body { background: white !important; }
+        .sidebar, .btnrow, .print-hide, .page-preloader, #invoiceListArea, .sidebar-overlay, .mobile-shell-header, .btn.secondary, h2.print-hide { display: none !important; }
+        .content { margin: 0 !important; padding: 0 !important; background: white !important; }
+        .card { box-shadow: none !important; border: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        .wrap { display: block !important; }
+        .print-header { display: block; text-align: center; }
+    }
+  </style>
+</body>
+</html>

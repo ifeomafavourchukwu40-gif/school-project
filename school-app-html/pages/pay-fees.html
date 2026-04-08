@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pay Fees</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+</head>
+<body>
+<div class="page-preloader" id="pagePreloader">
+  <img src="../assets/images/re-load.png" alt="Loading" class="preloader-image">
+</div>
+
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content">
+      <div id="mobileShell"></div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <h2 style="margin:0 0 6px 0;">Fee Payment Portal</h2>
+        <div class="muted">Select items to pay. Use <b>Pay Now</b> for instant payment or <b>Manual Transfer</b> to submit proof of bank deposit for admin approval.</div>
+      </div>
+
+      <div id="feesContainer">
+        <div class="card" style="text-align:center; padding:40px;">
+          <div class="muted">Loading fees...</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, renderSidebar, currentUser } from "../assets/js/app.js";
+    import { mountMobileShell } from "../assets/js/mobile-shell.js";
+    import { apiGet, apiPost } from "../assets/js/storage.js";
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const p = document.getElementById('pagePreloader');
+        if (p) p.classList.add('fade-out');
+      }, 500);
+    });
+
+    requireAuth();
+    renderSidebar();
+    mountMobileShell("pay-fees");
+
+    let allFees   = [];
+    let termData  = null;
+
+    const STATUS_BADGE = {
+      paid:    '<span style="background:rgba(40,167,69,0.12); color:#28a745; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:600;">PAID</span>',
+      pending: '<span style="background:rgba(255,165,0,0.12); color:orange; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:600;">PENDING APPROVAL</span>',
+      unpaid:  '',
+    };
+
+    async function loadFees() {
+      const container = document.getElementById('feesContainer');
+      try {
+        const vSession = localStorage.getItem('view_year');
+        const vTerm    = localStorage.getItem('view_term');
+        const params   = new URLSearchParams();
+        if (vSession) params.append('session', vSession);
+        if (vTerm)    params.append('term',    vTerm);
+
+        const data = await apiGet('../api/fees.php?action=my_fees&' + params.toString());
+        termData = data;
+
+        if (!data || !data.classLevel) {
+          container.innerHTML = `<div class="card">
+            <div class="muted">Please update your profile with your Class Level first.</div>
+            <a href="profile.html" class="btn" style="margin-top:10px;">Go to Profile</a>
+          </div>`;
+          return;
+        }
+
+        if (!data.fees || data.fees.length === 0) {
+          container.innerHTML = `<div class="card">
+            <div class="muted">No fees configured for <b>${data.classLevel}</b> in <b>${data.term} (${data.session})</b>.</div>
+          </div>`;
+          return;
+        }
+
+        allFees = data.fees;
+        renderFees();
+      } catch(err) {
+        container.innerHTML = `<div class="card"><div class="muted" style="color:red;">Error: ${err.message}</div></div>`;
+      }
+    }
+
+    function renderFees() {
+      const unpaidFees = allFees.filter(f => f.payStatus === 'unpaid');
+
+      const rows = allFees.map((fee, idx) => {
+        const isPaid    = fee.payStatus === 'paid';
+        const isPending = fee.payStatus === 'pending';
+        const canSelect = !isPaid && !isPending;
+        return `<tr style="border-bottom:1px solid var(--border); ${isPaid ? 'opacity:0.55;' : ''}">
+          <td style="padding:12px;">
+            ${canSelect
+              ? `<input type="checkbox" class="fee-chk" data-idx="${idx}" checked style="width:16px;height:16px;">`
+              : `<input type="checkbox" disabled ${isPending?'':'checked'} style="width:16px;height:16px; opacity:0.4;">`
+            }
+          </td>
+          <td style="padding:12px; font-weight:600;">${fee.description}</td>
+          <td style="padding:12px;">₦${parseFloat(fee.amount).toLocaleString()}</td>
+          <td style="padding:12px;">${STATUS_BADGE[fee.payStatus] || ''}</td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('feesContainer').innerHTML = `
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <div style="font-weight:700; font-size:16px;">${termData.classLevel}</div>
+              <div class="muted" style="font-size:13px;">${termData.term} — ${termData.session}</div>
+            </div>
+            ${unpaidFees.length > 0
+              ? `<label style="cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px;">
+                  <input type="checkbox" id="selectAll" checked> Select All
+                </label>`
+              : ''}
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border);">
+                  <th style="padding:10px; width:40px;"></th>
+                  <th style="padding:10px; text-align:left;">Fee Item</th>
+                  <th style="padding:10px; text-align:left;">Amount</th>
+                  <th style="padding:10px; text-align:left;">Status</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 0; margin-top:8px; border-top:2px solid var(--border); font-size:18px; font-weight:bold;">
+            <div>Selected Total:</div>
+            <div id="selTotal" style="color:var(--blue);">₦0.00</div>
+          </div>
+
+          ${unpaidFees.length > 0 ? `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:4px;">
+            <button id="payNowBtn" class="btn" style="padding:14px;">
+              Pay Now (Instant)
+            </button>
+            <button id="payManualBtn" class="btn secondary" style="padding:14px;">
+              Manual Bank Transfer
+            </button>
+          </div>
+          <div class="muted" style="font-size:12px; margin-top:8px; text-align:center;">
+            "Manual Bank Transfer" submits your payment for admin approval. You will need to provide your teller/transfer ID.
+          </div>
+          ` : `<div class="muted" style="text-align:center; margin-top:10px;">All fees are paid or pending approval.</div>`}
+
+          <div id="payMsg" style="display:none; margin-top:16px; padding:14px; border-radius:8px; border:1px solid var(--border);"></div>
+        </div>
+      `;
+
+      // Wire up checkboxes
+      const checkboxes = () => document.querySelectorAll('.fee-chk');
+      const selAll = document.getElementById('selectAll');
+
+      function calcTotal() {
+        let total = 0;
+        checkboxes().forEach(cb => {
+          if (cb.checked) total += parseFloat(allFees[cb.dataset.idx].amount);
+        });
+        document.getElementById('selTotal').textContent = '₦' + total.toLocaleString();
+        const payBtn = document.getElementById('payNowBtn');
+        const manBtn = document.getElementById('payManualBtn');
+        if (payBtn) payBtn.textContent = `Pay Now — ₦${total.toLocaleString()}`;
+        if (manBtn) manBtn.textContent = total > 0 ? `Manual Transfer — ₦${total.toLocaleString()}` : 'Manual Bank Transfer';
+        return total;
+      }
+
+      if (selAll) {
+        selAll.addEventListener('change', () => {
+          checkboxes().forEach(cb => { cb.checked = selAll.checked; });
+          calcTotal();
+        });
+      }
+      checkboxes().forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (selAll) selAll.checked = [...checkboxes()].every(c => c.checked);
+          calcTotal();
+        });
+      });
+      calcTotal();
+
+      // Instant payment via Paystack
+      const payNow = document.getElementById('payNowBtn');
+      if (payNow) {
+        payNow.addEventListener('click', async () => {
+          const total = calcTotal();
+          if (total <= 0) { alert('Please select at least one fee item.'); return; }
+          
+          try {
+              // Fetch Paystack configuration
+              const schoolNode = await apiGet('../api/settings.php?action=school');
+              const pk = schoolNode.paystack_public_key;
+              if (!pk) {
+                  alert("Online payments are currently unavailable (Payment Gateway not configured). Please use Manual Transfer.");
+                  return;
+              }
+              
+              if (!confirm(`Pay ₦${total.toLocaleString()} securely via Paystack?`)) return;
+              
+              // Get current user email for Paystack popup
+              const usr = await currentUser();
+              const email = usr?.email || "student@school.com";
+              
+              const handler = PaystackPop.setup({
+                key: pk,
+                email: email,
+                amount: Math.round(total * 100), // Kobo
+                currency: 'NGN',
+                ref: 'SW_' + Math.floor((Math.random() * 1000000000) + 1),
+                callback: function(response) {
+                  // Pass reference to our backend for secure verification
+                  submitPayment('instant', response.reference).catch(console.error);
+                },
+                onClose: function() {
+                  console.log('Payment window closed');
+                }
+              });
+              handler.openIframe();
+              
+          } catch (e) {
+              alert("Error initializing payment: " + e.message);
+          }
+        });
+      }
+
+      // Manual payment
+      const payManual = document.getElementById('payManualBtn');
+      if (payManual) {
+        payManual.addEventListener('click', async () => {
+          const total = calcTotal();
+          if (total <= 0) { alert('Please select at least one fee item.'); return; }
+          const teller = prompt('To pay manually, please make a transfer to the school account:\n\nBank: Opay\nAccount Name: Ifeoma favour chukwu\nAccount No: 8138272131\n\nOnce paid, enter your bank teller number or transfer reference ID below:');
+          if (!teller) return;
+          await submitPayment('manual');
+        });
+      }
+    }
+
+    async function submitPayment(paymentType, reference = null) {
+      const msgBox = document.getElementById('payMsg');
+      msgBox.style.display = 'block';
+      msgBox.textContent   = 'Processing…';
+      msgBox.style.color   = 'var(--fg)';
+
+      const items = [];
+      document.querySelectorAll('.fee-chk:checked').forEach(cb => {
+        const fee = allFees[cb.dataset.idx];
+        items.push({ ...fee, paymentType });
+      });
+
+      try {
+        if (paymentType === 'instant' && reference) {
+            // New secure verify path
+            await apiPost('../api/fees.php?action=verify_payment', {
+              term:    termData.term,
+              session: termData.session,
+              items,
+              reference
+            });
+        } else {
+            // Manual pathway remains the same
+            await apiPost('../api/fees.php?action=pay_fee', {
+              term:    termData.term,
+              session: termData.session,
+              items,
+            });
+        }
+
+        if (paymentType === 'instant') {
+          msgBox.style.color = '#28a745';
+          msgBox.innerHTML   = '<b>Payment successful!</b> Your receipt has been generated. <a href="./home.html" style="text-decoration:underline;">Go to Dashboard</a>';
+        } else {
+          msgBox.style.color = 'orange';
+          msgBox.innerHTML   = '<b>Manual payment submitted.</b> Awaiting admin approval. You can check status on your dashboard.';
+        }
+
+        // Reload to refresh statuses
+        setTimeout(loadFees, 2000);
+      } catch(err) {
+        msgBox.style.color = 'red';
+        msgBox.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    loadFees();
+  </script>
+</body>
+</html>

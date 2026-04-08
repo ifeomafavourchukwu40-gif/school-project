@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profile</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    .avatar:hover {
+      opacity: 0.9;
+      transition: opacity 0.2s;
+    }
+    
+    .profile-message {
+      animation: slideIn 0.3s ease;
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printSummary, #printSummary * {
+        visibility: visible;
+      }
+      #printSummary {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100% !important;
+        display: block !important;
+      }
+      .card, .btnrow, .sidebar, #mobileShell, .page-preloader {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+<!-- Page Preloader -->
+<div class="page-preloader" id="pagePreloader">
+  <img src="../assets/images/re-load.png" alt="Loading" class="preloader-image">
+</div>
+  
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content">
+      <div id="mobileShell"></div>
+      
+      <div id="printSummary" style="display: none; background: #fff; padding: 40px; color: #000;"></div>
+      
+      <div class="card">
+        <h2 style="margin:0 0 10px 0">Edit Profile</h2>
+        <div class="muted">Update your information.</div>
+        
+        <!-- Profile Picture Upload Section -->
+        <div style="text-align: center; margin: 20px 0;">
+          <div class="avatar" id="profileAvatarPreview" style="width: 100px; height: 100px; margin: 0 auto 16px; cursor: pointer; position: relative;">
+            <img id="avatarPreview" src="../assets/images/logo.png" alt="Profile Picture" style="width: 100%; height: 100%;">
+            <div style="position: absolute; bottom: 0; right: 0; background: var(--blue); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+              ✎
+            </div>
+          </div>
+          <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
+          <button type="button" id="uploadBtn" class="btn secondary" style="margin: 0 auto; display: block;">
+            Upload Profile Picture
+          </button>
+          <div class="muted" style="margin-top: 8px; font-size: 12px;">
+            Click the picture or button to upload (JPG, PNG, max 2MB)
+          </div>
+        </div>
+        
+        <div class="formrow" style="margin-top:14px">
+          <div>
+            <label>First Name</label>
+            <input id="firstName" placeholder="First name" />
+          </div>
+          <div>
+            <label>Middle Name</label>
+            <input id="middleName" placeholder="Middle name" />
+          </div>
+        </div>
+
+        <div class="formrow">
+          <div>
+            <label>Last Name</label>
+            <input id="lastName" placeholder="Last name" />
+          </div>
+          <div>
+            <label>Email</label>
+            <input id="email" type="email" placeholder="you@email.com" readonly style="opacity:0.7;" />
+          </div>
+        </div>
+        
+        <div class="formrow">
+          <div>
+            <label>Age</label>
+            <input id="age" type="number" placeholder="Enter age" />
+          </div>
+          <div>
+            <label>Class</label>
+            <select id="classLevel" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--fg);">
+              <option value="">Select Class</option>
+              <option value="JS 1">JS 1</option>
+              <option value="JS 2">JS 2</option>
+              <option value="JS 3">JS 3</option>
+              <option value="SS 1">SS 1</option>
+              <option value="SS 2">SS 2</option>
+              <option value="SS 3">SS 3</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="formrow">
+          <div>
+            <label>Phone Number</label>
+            <input id="phone" placeholder="080 1234 5678" />
+          </div>
+          <div>
+            <label>Parent / Guardian Phone</label>
+            <input id="parentPhone" placeholder="080 0000 0000" />
+          </div>
+        </div>
+
+        <div class="formrow">
+          <div>
+            <label>State of Origin</label>
+            <select id="state" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--fg);">
+              <option value="">Select State</option>
+            </select>
+          </div>
+          <div>
+            <label>Local Government Area (LGA)</label>
+            <select id="capital" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--fg);">
+              <option value="">Select LGA</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="formrow">
+          <div>
+            <label>Address</label>
+            <input id="address" placeholder="Your address" />
+          </div>
+          <div>
+            <label>Next of Kin</label>
+            <input id="nextOfKin" placeholder="Full name of next of kin" />
+          </div>
+        </div>
+
+        <div class="btnrow" style="margin-top: 20px;">
+          <button class="btn" type="button" id="saveBtn">Save Changes</button>
+          <button class="btn secondary" type="button" id="printBtn">Print Profile</button>
+          <a class="btn secondary" href="./home.html">Cancel</a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, renderSidebar, currentUser, updateCurrentUser } from "../assets/js/app.js";
+    import { mountMobileShell } from "../assets/js/mobile-shell.js";
+    
+    // Hide preloader when page is fully loaded
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const preloader = document.getElementById('pagePreloader');
+        if (preloader) {
+          preloader.classList.add('fade-out');
+        }
+      }, 500);
+    });
+    
+    requireAuth();
+    renderSidebar();
+    mountMobileShell("profile");
+    
+    // Comprehensive Nigerian States and LGAs Data
+    const stateLgas = {
+      "Abia": ["Aba North", "Aba South", "Arochukwu", "Bende", "Ikwuano", "Isiala Ngwa North", "Isiala Ngwa South", "Isuikwuato", "Obi Ngwa", "Ohafia", "Osisioma Ngwa", "Ugwunagbo", "Ukwa East", "Ukwa West", "Umuahia North", "Umuahia South", "Umu Nneochi"],
+      "Adamawa": ["Demsa", "Fufore", "Ganye", "Girei", "Gombi", "Guyuk", "Hong", "Jada", "Lamurde", "Madagali", "Maiha", "Mayo-Belwa", "Michika", "Mubi North", "Mubi South", "Numan", "Shelleng", "Song", "Toungo", "Yola North", "Yola South"],
+      "Akwa Ibom": ["Abak", "Eastern Obolo", "Eket", "Esit Eket", "Essien Udim", "Etim Ekpo", "Etinan", "Ibeno", "Ibesikpo Asutan", "Ibiono-Ibom", "Ika", "Ikono", "Ikot Abasi", "Ikot Ekpene", "Ini", "Itu", "Mbo", "Mkpat-Enin", "Nsit-Atai", "Nsit-Ibom", "Nsit-Ubium", "Obon Akpa", "Okobo", "Onna", "Oron", "Oruk Anam", "Udung-Uko", "Ukanafun", "Uruan", "Urue-Offong/Oruko", "Uyo"],
+      "Anambra": ["Aguata", "Anambra East", "Anambra West", "Anaocha", "Awka North", "Awka South", "Ayamelum", "Dunukofia", "Ekwusigo", "Idemili North", "Idemili South", "Ihiala", "Njikoka", "Nnewi North", "Nnewi South", "Ogbaru", "Onitsha North", "Onitsha South", "Orumba North", "Orumba South", "Oyi"],
+      "Bauchi": ["Alkaleri", "Bauchi", "Bogoro", "Damban", "Darazo", "Dass", "Gamawa", "Ganjuwa", "Giade", "Itas/Gadau", "Jama'are", "Katagum", "Kirfi", "Misau", "Ningi", "Shira", "Tafawa Balewa", "Toro", "Warji", "Zaki"],
+      "Bayelsa": ["Brass", "Ekeremor", "Kolokuma/Opokuma", "Nembe", "Ogbia", "Sagbama", "Southern Ijaw", "Yenagoa"],
+      "Benue": ["Agatu", "Apa", "Ado", "Buruku", "Gboko", "Guma", "Gwer East", "Gwer West", "Katsina-Ala", "Konshisha", "Kwande", "Logo", "Makurdi", "Obi", "Ogbadibo", "Ohimini", "Oju", "Okpokwu", "Oturkpo", "Tarka", "Ukum", "Ushongo", "Vandeikya"],
+      "Borno": ["Abadam", "Askira/Uba", "Bama", "Bayo", "Biu", "Chibok", "Damboa", "Dikwa", "Gubio", "Guzamala", "Gwoza", "Hawul", "Jere", "Kaga", "Kala/Balge", "Konduga", "Kukawa", "Kwaya Kusar", "Mafa", "Magumeri", "Maiduguri", "Marte", "Mobbar", "Monguno", "Ngala", "Nganzai", "Shani"],
+      "Cross River": ["Abi", "Akamkpa", "Akpabuyo", "Bakassi", "Bekwarra", "Biase", "Boki", "Calabar Municipal", "Calabar South", "Etung", "Ikom", "Obanliku", "Obubra", "Obudu", "Odukpani", "Ogoja", "Yakuur", "Yala"],
+      "Delta": ["Aniocha North", "Aniocha South", "Bomadi", "Burutu", "Ethiope East", "Ethiope West", "Ika North East", "Ika South", "Isoko North", "Isoko South", "Ndokwa East", "Ndokwa West", "Okpe", "Oshimili North", "Oshimili South", "Patani", "Sapele", "Udu", "Ughelli North", "Ughelli South", "Ukwuani", "Uvwie", "Warri North", "Warri South", "Warri South West"],
+      "Ebonyi": ["Abakaliki", "Afikpo North", "Afikpo South", "Ebonyi", "Ezza North", "Ezza South", "Ikwo", "Ishielu", "Ivo", "Izzi", "Ohaozara", "Ohaukwu", "Onicha"],
+      "Edo": ["Akoko-Edo", "Egor", "Esan Central", "Esan North-East", "Esan South-East", "Esan West", "Etsako Central", "Etsako East", "Etsako West", "Igueben", "Ikpoba Okha", "Orhionmwon", "Oredo", "Ovia North-East", "Ovia South-West", "Owan East", "Owan West", "Uhunmwonde"],
+      "Ekiti": ["Ado Ekiti", "Efon", "Ekiti East", "Ekiti South-West", "Ekiti West", "Emure", "Gbonyin", "Ido Osi", "Ijero", "Ikere", "Ikole", "Ilejemeje", "Irepodun/Ifelodun", "Ise/Orun", "Moba", "Oye"],
+      "Enugu": ["Aninri", "Awgu", "Enugu East", "Enugu North", "Enugu South", "Ezeagu", "Igbo Etiti", "Igbo Eze North", "Igbo Eze South", "Isi Uzo", "Nkanu East", "Nkanu West", "Nsukka", "Oji River", "Udenu", "Udi", "Uzo Uwani"],
+      "FCT": ["Abaji", "Bwari", "Gwagwalada", "Kuje", "Kwali", "Municipal Area Council"],
+      "Gombe": ["Akko", "Balanga", "Billiri", "Dukku", "Funakaye", "Gombe", "Kaltungo", "Kwami", "Nafada", "Shongom", "Yamaltu/Deba"],
+      "Imo": ["Aboh Mbaise", "Ahiazu Mbaise", "Ehime Mbano", "Ezinihitte", "Ideato North", "Ideato South", "Ihitte/Uboma", "Ikeduru", "Isiala Mbano", "Isu", "Mbaitoli", "Ngor Okpala", "Njaba", "Nkwerre", "Nwangele", "Obowo", "Oguta", "Ohaji/Egbema", "Okigwe", "Orlu", "Orsu", "Oru East", "Oru West", "Owerri Municipal", "Owerri North", "Owerri West", "Unuimo"],
+      "Jigawa": ["Auyo", "Babura", "Biriniwa", "Birnin Kudu", "Buji", "Dutse", "Gagarawa", "Garki", "Gumel", "Guri", "Gwaram", "Gwiwa", "Hadejia", "Ihigary", "Ingawa", "Kafin Hausa", "Kaugama", "Kazaure", "Kiri Kasama", "Kiyawa", "Maigatari", "Malam Madori", "Miga", "Ringim", "Roni", "Sule Tankarkar", "Taura", "Yankwashi"],
+      "Kaduna": ["Birnin Gwari", "Chikun", "Giwa", "Igabi", "Ikara", "Jaba", "Jema'a", "Kachia", "Kaduna North", "Kaduna South", "Kagarko", "Kajuru", "Kaura", "Kauru", "Kubau", "Kudan", "Lere", "Makarfi", "Sabon Gari", "Sanga", "Soba", "Zangon Kataf", "Zaria"],
+      "Kano": ["Ajingi", "Albasu", "Bagwai", "Bebeji", "Bichi", "Bunkure", "Dala", "Dambatta", "Dawakin Kudu", "Dawakin Tofa", "Doguwa", "Fagge", "Gabasawa", "Garko", "Garun Mallam", "Gaya", "Gezawa", "Gwale", "Gwarzo", "Kabo", "Kano Municipal", "Karaye", "Kibiya", "Kiru", "Kumbotso", "Kunchi", "Kura", "Madobi", "Makoda", "Minjibir", "Nasarawa", "Rano", "Rimin Gado", "Rogo", "Shanono", "Sumaila", "Takai", "Tarauni", "Tofa", "Tsanyawa", "Tudun Wada", "Ungogo", "Warawa", "Wudil"],
+      "Katsina": ["Bakori", "Batagarawa", "Batsari", "Baure", "Bindawa", "Charanchi", "Dandume", "Danja", "Dan Musa", "Daura", "Dutsi", "Dutsin Ma", "Faskari", "Funtua", "Ingawa", "Jibia", "Kafur", "Kaita", "Kankara", "Kankia", "Katsina", "Kurfi", "Kusada", "Mai'Adua", "Malumfashi", "Mani", "Mashi", "Matazu", "Musawa", "Rimi", "Sabuwa", "Safana", "Sandamu", "Zango"],
+      "Kebbi": ["Aleiro", "Arewa Dandi", "Argungu", "Augie", "Bagudo", "Birnin Kebbi", "Bunza", "Dandi", "Fakai", "Gwandu", "Jega", "Kalgo", "Koko/Besse", "Maiyama", "Ngaski", "Sakaba", "Shanga", "Suru", "Wasagu/Danko", "Yauri", "Zuru"],
+      "Kogi": ["Adavi", "Ajaokuta", "Ankpa", "Bassa", "Dekina", "Ibaji", "Idah", "Igalamela Odolu", "Ijumu", "Kabba/Bunu", "Kogi", "Lokoja", "Mopa Muro", "Ofu", "Ogori/Magongo", "Okehi", "Okene", "Olamaboro", "Omala", "Yagba East", "Yagba West"],
+      "Kwara": ["Asa", "Baruten", "Edu", "Ekiti", "Ifelodun", "Ilorin East", "Ilorin South", "Ilorin West", "Irepodun", "Isin", "Kaiama", "Moro", "Offa", "Oke Ero", "Oyun", "Pategi"],
+      "Lagos": ["Agege", "Ajeromi-Ifelodun", "Alimosho", "Amuwo-Odofin", "Apapa", "Badagry", "Epe", "Eti Osa", "Ibeju-Lekki", "Ifako-Ijaiye", "Ikeja", "Ikorodu", "Kosofe", "Lagos Island", "Lagos Mainland", "Mushin", "Ojo", "Oshodi-Isolo", "Shomolu", "Surulere"],
+      "Nasarawa": ["Akwanga", "Awe", "Doma", "Karu", "Keana", "Keffi", "Kokona", "Lafia", "Nasarawa", "Nasarawa Egon", "Obi", "Toto", "Wamba"],
+      "Niger": ["Agaie", "Agwara", "Bida", "Borgu", "Bosso", "Chanchaga", "Edati", "Gbako", "Gurara", "Katcha", "Kontagora", "Lapai", "Lavun", "Magama", "Mariga", "Mashegu", "Mokwa", "Moya", "Paikoro", "Rafi", "Rijau", "Shiroro", "Suleja", "Tafa", "Wushishi"],
+      "Ogun": ["Abeokuta North", "Abeokuta South", "Ado-Odo/Ota", "Egbado North", "Egbado South", "Ewekoro", "Ifo", "Ijebu East", "Ijebu North", "Ijebu North East", "Ijebu Ode", "Ikenne", "Imeko Afon", "Ipokia", "Obafemi Owode", "Odeda", "Odogbolu", "Ogun Waterside", "Remo North", "Shagamu"],
+      "Ondo": ["Akoko North-East", "Akoko North-West", "Akoko South-West", "Akoko South-East", "Akure North", "Akure South", "Ese Odo", "Idanre", "Ifedore", "Ilaje", "Ile Oluji/Okeigbo", "Irele", "Odigbo", "Okitipupa", "Ondo East", "Ondo West", "Ose", "Owo"],
+      "Osun": ["Atakunmosa East", "Atakunmosa West", "Aiyedaade", "Aiyedire", "Boluwaduro", "Boripe", "Ede North", "Ede South", "Ife Central", "Ife East", "Ife North", "Ife South", "Egbedore", "Ejigbo", "Ifedayo", "Ifelodun", "Ila", "Ilesa North", "Ilesa South", "Irepodun", "Irewole", "Isokan", "Iwo", "Obokun", "Odo Otin", "Ola Oluwa", "Olorunda", "Oriade", "Orolu", "Osogbo"],
+      "Oyo": ["Afijio", "Akinyele", "Atiba", "Atisbo", "Egbeda", "Ibadan North", "Ibadan North-East", "Ibadan North-West", "Ibadan South-East", "Ibadan South-West", "Ibarapa Central", "Ibarapa East", "Ibarapa North", "Ido", "Irepo", "Iseyin", "Itesiwaju", "Iwajowa", "Kajola", "Lagelu", "Ogbomosho North", "Ogbomosho South", "Ogo Oluwa", "Olorunsogo", "Oluyole", "Ona Ara", "Orelope", "Ori Ire", "Oyo", "Oyo East", "Saki East", "Saki West", "Surulere"],
+      "Plateau": ["Bokkos", "Barkin Ladi", "Bassa", "Jos East", "Jos North", "Jos South", "Kanam", "Kanke", "Langtang North", "Langtang South", "Mangu", "Mikang", "Pankshin", "Qua'an Pan", "Riyom", "Shendam", "Wase"],
+      "Rivers": ["Abua/Odual", "Ahoada East", "Ahoada West", "Akuku-Toru", "Andoni", "Asari-Toru", "Bonny", "Degema", "Eleme", "Emuoha", "Etche", "Gokana", "Ikwerre", "Khana", "Obio/Akpor", "Ogba/Egbema/Ndoni", "Ogu/Bolo", "Okrika", "Omuma", "Opobo/Nkoro", "Oyigbo", "Port Harcourt", "Tai"],
+      "Sokoto": ["Binji", "Bodinga", "Dange Shuni", "Gada", "Goronyo", "Gudu", "Gwadabawa", "Illela", "Isa", "Kebbe", "Kware", "Rabah", "Sabon Birni", "Shagari", "Silame", "Sokoto North", "Sokoto South", "Tambuwal", "Tangaza", "Tureta", "Wamako", "Wurno", "Yabo"],
+      "Taraba": ["Ardo Kola", "Bali", "Donga", "Gashaka", "Gassol", "Ibi", "Jalingo", "Karim Lamido", "Kumi", "Lau", "Sardauna", "Takum", "Ussa", "Wukari", "Yorro", "Zing"],
+      "Yobe": ["Bade", "Bursari", "Damaturu", "Fika", "Fune", "Geidam", "Gujba", "Gulani", "Jakusko", "Karasuwa", "Machina", "Nangere", "Nguru", "Potiskum", "Tarmuwa", "Yunusari", "Yusufari"],
+      "Zamfara": ["Anka", "Bakura", "Birnin Magaji/Kiyaw", "Bukkuyum", "Bungudu", "Gummi", "Gusau", "Kaura Namoda", "Maradun", "Maru", "Shinkafi", "Talata Mafara", "Chafe", "Zurmi"]
+    };
+
+    const stateSelect = document.getElementById('state');
+    const lgaSelect = document.getElementById('capital');
+
+    // Populate States
+    Object.keys(stateLgas).sort().forEach(state => {
+      const opt = document.createElement('option');
+      opt.value = state;
+      opt.textContent = state;
+      stateSelect.appendChild(opt);
+    });
+
+    // Handle State Change
+    stateSelect.addEventListener('change', function() {
+      const selectedState = this.value;
+      lgaSelect.innerHTML = '<option value="">Select LGA</option>';
+      
+      if (selectedState && stateLgas[selectedState]) {
+        stateLgas[selectedState].forEach(lga => {
+          const opt = document.createElement('option');
+          opt.value = lga;
+          opt.textContent = lga;
+          lgaSelect.appendChild(opt);
+        });
+      }
+    });
+
+    // Load current user data
+    const user = await currentUser();
+    if (user) {
+      document.getElementById('firstName').value = user.firstName || '';
+      document.getElementById('middleName').value = user.middleName || '';
+      document.getElementById('lastName').value = user.lastName || '';
+      document.getElementById('age').value = user.age || '';
+      document.getElementById('classLevel').value = user.classLevel || '';
+      document.getElementById('email').value = user.email || '';
+      document.getElementById('phone').value = user.phone || '';
+      document.getElementById('address').value = user.address || '';
+      document.getElementById('parentPhone').value = user.parentPhone || '';
+      document.getElementById('nextOfKin').value = user.nextOfKin || '';
+      
+      // Load saved state and LGA
+      if (user.state) {
+        stateSelect.value = user.state;
+        // Trigger change to populate LGAs
+        stateSelect.dispatchEvent(new Event('change'));
+        if (user.capital) {
+          lgaSelect.value = user.capital;
+        }
+      }
+      
+      // Set avatar preview if exists
+      if (user.avatarDataUrl) {
+        document.getElementById('avatarPreview').src = user.avatarDataUrl;
+      }
+    }
+    
+    // Profile picture upload functionality
+    const avatarUpload = document.getElementById('avatarUpload');
+    const avatarPreview = document.getElementById('avatarPreview');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const profileAvatarPreview = document.getElementById('profileAvatarPreview');
+    
+    // Click on avatar or button to trigger file input
+    profileAvatarPreview.addEventListener('click', () => avatarUpload.click());
+    uploadBtn.addEventListener('click', () => avatarUpload.click());
+    
+    avatarUpload.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        alert('File size too large. Please select an image under 2MB.');
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/gif')) {
+        alert('Please select a valid image file (JPG, PNG, or GIF).');
+        return;
+      }
+      
+      // Preview image
+      const reader = new FileReader();
+      reader.onload = async function(event) {
+        avatarPreview.src = event.target.result;
+        
+        // Auto-save the avatar
+        await updateCurrentUser({ avatarDataUrl: event.target.result });
+        showMessage('Profile picture updated!', false);
+        renderSidebar();
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    // Print button functionality
+    document.getElementById('printBtn').addEventListener('click', () => {
+      const summary = document.getElementById('printSummary');
+      const avatarSrc = document.getElementById('avatarPreview').src;
+      summary.innerHTML = `
+        <div style="text-align:center; margin-bottom: 30px;">
+          <img src="${avatarSrc}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover;">
+          <h2 style="margin: 10px 0 0 0;">${document.getElementById('firstName').value} ${document.getElementById('lastName').value}</h2>
+          <div style="color: #666; margin-top: 5px;">Student Profile Summary</div>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 16px;">
+          <tbody>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee; width: 40%;"><strong>First Name:</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('firstName').value || '-'}</td></tr>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Middle Name:</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('middleName').value || '-'}</td></tr>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Last Name:</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('lastName').value || '-'}</td></tr>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Email:</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('email').value || '-'}</td></tr>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Age:</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('age').value || '-'}</td></tr>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Class Level:</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('classLevel').value || '-'}</td></tr>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Phone:</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('phone').value || '-'}</td></tr>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Address:</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('address').value || '-'}</td></tr>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>State of Origin:</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('state').value || '-'}</td></tr>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Local Government Area (LGA):</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('capital').value || '-'}</td></tr>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Parent Phone:</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('parentPhone').value || '-'}</td></tr>
+            <tr><td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>Next of Kin:</strong></td><td style="padding: 12px; border-bottom: 1px solid #eee;">${document.getElementById('nextOfKin').value || '-'}</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top: 50px; text-align: center; color: #999; font-size: 13px;">
+          Generated from School Management Portal
+        </div>
+      `;
+      window.print();
+    });
+    
+    // Save button functionality
+    document.getElementById('saveBtn').addEventListener('click', async function() {
+      const btn = this;
+      const originalText = btn.textContent;
+      
+      const firstName = document.getElementById('firstName').value.trim();
+      const middleName = document.getElementById('middleName').value.trim();
+      const lastName = document.getElementById('lastName').value.trim();
+      const fullName = [firstName, middleName, lastName].filter(Boolean).join(" ");
+      const age = document.getElementById('age').value.trim();
+      const classLevel = document.getElementById('classLevel').value;
+      const phone = document.getElementById('phone').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const state = document.getElementById('state').value;
+      const capital = document.getElementById('capital').value;
+      const parentPhone = document.getElementById('parentPhone').value.trim();
+      const nextOfKin = document.getElementById('nextOfKin').value.trim();
+      
+      // Basic validation
+      if (!firstName || !lastName) {
+        showMessage('Please enter your first and last name.', true);
+        return;
+      }
+      
+      try {
+        // Indicate saving
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        btn.style.opacity = '0.7';
+
+        // Update user data
+        await updateCurrentUser({
+          fullName,
+          firstName,
+          middleName,
+          lastName,
+          age,
+          classLevel,
+          phone,
+          address,
+          state,
+          capital,
+          parentPhone,
+          nextOfKin
+        });
+        
+        // Indicate success
+        btn.textContent = 'Saved!';
+        btn.style.backgroundColor = '#28a745';
+        btn.style.color = '#fff';
+        btn.style.opacity = '1';
+        
+        showMessage('Profile updated successfully!', false);
+        
+        // Refresh sidebar to show updated name/avatar
+        renderSidebar();
+
+        // Revert button after delay
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+          btn.style.backgroundColor = '';
+          btn.style.color = '';
+          btn.style.opacity = '';
+        }, 2000);
+
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+        btn.style.opacity = '';
+        showMessage('Error saving: ' + err.message, true);
+      }
+    });
+    
+    // Message display function
+    function showMessage(text, isError = false) {
+      // Remove existing message
+      const existingMsg = document.querySelector('.profile-message');
+      if (existingMsg) existingMsg.remove();
+      
+      // Create new message
+      const message = document.createElement('div');
+      message.className = 'card profile-message';
+      message.style.marginTop = '14px';
+      message.style.borderColor = isError ? 'rgba(255,0,0,.35)' : 'var(--border)';
+      message.textContent = text;
+      
+      // Insert after the form
+      const card = document.querySelector('.card');
+      const btnrow = document.querySelector('.btnrow');
+      card.insertBefore(message, btnrow.nextSibling);
+      
+      // Auto-hide after 3 seconds
+      setTimeout(() => {
+        if (message.parentNode) {
+          message.style.opacity = '0';
+          message.style.transition = 'opacity 0.3s';
+          setTimeout(() => {
+            if (message.parentNode) message.remove();
+          }, 300);
+        }
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

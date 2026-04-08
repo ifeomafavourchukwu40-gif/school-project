@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Payment Tracking</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content">
+      <div id="mobileShell"></div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+          <div>
+            <h2 style="margin:0 0 5px 0;">Payment Tracking</h2>
+            <div class="muted" id="contextText">Loading context...</div>
+          </div>
+          <!-- Filters -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <input id="searchInput" type="text" placeholder="Search by name, class, or status…"
+              style="padding:8px 12px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg); min-width:200px;"
+              oninput="filterTable(this.value)">
+            <select id="filterClass" onchange="filterTable()" style="padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+              <option value="">All Classes</option>
+              <option value="JS 1">JS 1</option>
+              <option value="JS 2">JS 2</option>
+              <option value="JS 3">JS 3</option>
+              <option value="SS 1">SS 1</option>
+              <option value="SS 2">SS 2</option>
+              <option value="SS 3">SS 3</option>
+            </select>
+            <select id="filterPayStatus" onchange="filterTable()" style="padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+              <option value="">All Statuses</option>
+              <option value="paid">Paid / Cleared</option>
+              <option value="debtor">Debtors</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; text-align:left;">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border);">
+                <th style="padding:10px;">#</th>
+                <th style="padding:10px; cursor:pointer;" onclick="sortBy('name')">Student ↕</th>
+                <th style="padding:10px;">Class</th>
+                <th style="padding:10px;">Total Billed</th>
+                <th style="padding:10px;">Total Paid</th>
+                <th style="padding:10px;">Balance</th>
+                <th style="padding:10px;">Status</th>
+                <th style="padding:10px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="trackingTableBody">
+              <tr><td colspan="8" style="padding:20px; text-align:center;" class="muted">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, renderSidebar } from "../assets/js/app.js";
+    import { mountMobileShell } from "../assets/js/mobile-shell.js";
+    import { apiGet } from "../assets/js/storage.js";
+
+    requireAuth();
+    renderSidebar();
+    mountMobileShell("invoice");
+
+    let allData  = [];
+    let sortAsc  = true;
+
+    async function loadTracking() {
+      const tbody = document.getElementById('trackingTableBody');
+      tbody.innerHTML = '<tr><td colspan="8" style="padding:20px; text-align:center;" class="muted">Loading...</td></tr>';
+
+      try {
+        const vYear = localStorage.getItem('view_year');
+        const vTerm = localStorage.getItem('view_term');
+        const school = await apiGet('../api/settings.php?action=school');
+        const ctxYear = vYear || school.current_year;
+        const ctxTerm = vTerm || school.current_term;
+        document.getElementById('contextText').textContent = `${ctxTerm} — ${ctxYear}`;
+
+        const params = new URLSearchParams();
+        if (vYear) params.append('year', vYear);
+        if (vTerm) params.append('term', vTerm);
+
+        const data = await apiGet('../api/invoices.php?action=tracking&' + params.toString());
+
+        // Sort alphabetically by name as default
+        data.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+        allData = data;
+        renderTable(allData);
+      } catch(err) {
+        document.getElementById('trackingTableBody').innerHTML =
+          `<tr><td colspan="8" style="padding:20px; text-align:center; color:red;">${err.message}</td></tr>`;
+      }
+    }
+
+    function renderTable(rows) {
+      const tbody = document.getElementById('trackingTableBody');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:20px; text-align:center;" class="muted">No results found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map((s, i) => {
+        const balance = parseFloat(s.balance);
+        const isPaid  = balance <= 0;
+        const statusBadge = isPaid
+          ? '<span style="color:#28a745; background:rgba(40,167,69,0.1); padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600;">Cleared</span>'
+          : '<span style="color:#dc3545; background:rgba(220,53,69,0.1); padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600;">Debtor</span>';
+
+        return `<tr style="border-bottom:1px solid var(--border); ${!isPaid ? 'background:rgba(220,53,69,0.02);' : ''}">
+          <td style="padding:10px; color:var(--fg-muted);">${i + 1}</td>
+          <td style="padding:10px; font-weight:600;">${s.fullName || '—'}</td>
+          <td style="padding:10px;">${s.classLevel || '—'}</td>
+          <td style="padding:10px;">₦${parseFloat(s.totalInvoiced||0).toLocaleString()}</td>
+          <td style="padding:10px; color:#28a745;">₦${parseFloat(s.totalPaid||0).toLocaleString()}</td>
+          <td style="padding:10px; font-weight:bold; color:${!isPaid ? '#dc3545' : '#28a745'};">₦${Math.abs(balance).toLocaleString()}</td>
+          <td style="padding:10px;">${statusBadge}</td>
+          <td style="padding:10px;">
+            <a class="btn secondary" style="padding:6px 10px; font-size:12px;" href="./invoice.html?studentId=${s.studentId}">View</a>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    window.filterTable = function() {
+      const q          = document.getElementById('searchInput').value.toLowerCase();
+      const clsFilter  = document.getElementById('filterClass').value.toLowerCase();
+      const payFilter  = document.getElementById('filterPayStatus').value;
+
+      const filtered = allData.filter(s => {
+        const name    = (s.fullName   || '').toLowerCase();
+        const cls     = (s.classLevel || '').toLowerCase();
+        const balance = parseFloat(s.balance);
+        const isPaid  = balance <= 0;
+
+        const matchQ   = !q || name.includes(q) || cls.includes(q);
+        const matchCls = !clsFilter || cls === clsFilter;
+        const matchPay = !payFilter
+          || (payFilter === 'paid'   && isPaid)
+          || (payFilter === 'debtor' && !isPaid);
+
+        return matchQ && matchCls && matchPay;
+      });
+
+      renderTable(filtered);
+    };
+
+    window.sortBy = function(field) {
+      sortAsc = !sortAsc;
+      allData.sort((a, b) => {
+        const va = (a.fullName || '').toLowerCase();
+        const vb = (b.fullName || '').toLowerCase();
+        return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+      });
+      filterTable();
+    };
+
+    loadTracking();
+  </script>
+</body>
+</html>

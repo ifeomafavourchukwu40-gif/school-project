@@ -1,0 +1,13 @@
+{
+  "name": "school-app-html",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "School Management WebApp with Firebase backend",
+  "main": "index.js",
+  "scripts": {
+    "start": "echo 'Open index.html in your browser'"
+  },
+  "dependencies": {
+    "firebase": "^9.0.0"
+  }
+}

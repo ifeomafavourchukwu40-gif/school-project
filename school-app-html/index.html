@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>School App</title>
+  <link rel="icon" type="image/png" href="./assets/images/logo.png">
+  <link rel="stylesheet" href="./assets/css/style.css">
+  <!-- Firebase SDK is installed via npm. See assets/js/firebase.js for initialization. -->
+</head>
+<body>
+  <!-- Page Preloader -->
+  <div class="page-preloader" id="pagePreloader">
+    <img src="./assets/images/re-load.png" alt="Loading" class="preloader-image">
+  </div>
+
+  <script type="module">
+    import { getSession } from "./assets/js/storage.js";
+    import { initTheme } from "./assets/js/app.js";
+    
+    // Show preloader immediately
+    const preloader = document.getElementById('pagePreloader');
+    
+    // Apply theme
+    initTheme();
+    
+    // Check session and redirect
+    const s = getSession();
+    const redirectTo = s ? "./pages/home.html" : "./pages/login.html";
+    
+    // Show preloader for 1.5 seconds, then redirect
+    setTimeout(() => {
+      // Fade out preloader
+      preloader.classList.add('fade-out');
+      
+      // Redirect after fade animation completes
+      setTimeout(() => {
+        window.location.href = redirectTo;
+      }, 500);
+      
+    }, 1500);
+  </script>
+</body>
+</html>

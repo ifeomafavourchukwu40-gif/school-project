@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Academic Documents</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    .doc-card {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 20px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 15px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .doc-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .doc-icon {
+        width: 50px;
+        height: 50px;
+        background: rgba(var(--blue-rgb), 0.1);
+        color: var(--blue);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        font-size: 24px;
+    }
+    .doc-info { flex: 1; }
+    .doc-title { font-weight: bold; font-size: 1.1rem; margin-bottom: 4px; }
+    .doc-desc { font-size: 0.9rem; color: var(--fg-muted); }
+
+    /* Admission Letter Print Styles */
+    #admissionLetterPrint {
+        display: none;
+        width: 210mm; /* A4 Width */
+        min-height: 297mm; /* A4 Height */
+        padding: 20mm;
+        margin: auto;
+        background: white;
+        color: black;
+        font-family: 'Times New Roman', Times, serif;
+        line-height: 1.6;
+    }
+    
+    @media print {
+        body * { visibility: hidden; }
+        #admissionLetterPrint, #admissionLetterPrint * { visibility: visible; }
+        #admissionLetterPrint {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            margin: 0;
+            padding: 10mm;
+        }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content">
+      <div id="mobileShell"></div>
+      
+      <div class="card" style="margin-bottom: 20px;">
+        <h2 style="margin:0 0 10px 0">Academic Documents</h2>
+        <div class="muted">View and download your official school documents.</div>
+      </div>
+
+      <div class="doc-card">
+        <div class="doc-icon">📜</div>
+        <div class="doc-info">
+            <div class="doc-title">Admission Letter</div>
+            <div class="doc-desc">Official confirmation of your enrollment at the school.</div>
+        </div>
+        <button class="btn" onclick="printAdmissionLetter()">Print Letter</button>
+      </div>
+
+      <div class="doc-card muted" style="opacity: 0.6; cursor: not-allowed;">
+        <div class="doc-icon">🧾</div>
+        <div class="doc-info">
+            <div class="doc-title">Student ID Card</div>
+            <div class="doc-desc">Coming Soon - Available after physical verification.</div>
+        </div>
+        <div style="font-style: italic; font-size:12px;">Locked</div>
+      </div>
+
+      <!-- Hidden Letter Template for Printing -->
+      <div id="admissionLetterPrint">
+          <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 30px;">
+              <img src="../assets/images/logo.png" style="width: 80px; margin-bottom: 10px;" alt="logo">
+              <h1 style="margin: 0; text-transform: uppercase; font-size: 22px;">El-anNexus Academy</h1>
+              <div style="font-size: 14px;">Off last oil well, Oyigbo, Etche Rives State</div>
+              <div style="font-weight: bold; margin-top: 5px;">OFFICE OF THE PROPRIETRESS (ACADEMIC)</div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+              <div>
+                  <div id="refNumber">Ref: EL-AN/ADM/---/---</div>
+                  <div id="letterDate">Date: ---</div>
+              </div>
+          </div>
+
+          <div style="margin-bottom: 30px;">
+              <div style="font-weight: bold;">To:</div>
+              <div id="studentName" style="font-weight: bold; font-size: 18px;">Student Full Name</div>
+              <div id="studentEmail">Email Address</div>
+              <div id="studentPhone">Phone Number</div>
+          </div>
+
+          <div style="text-align: center; font-weight: bold; text-decoration: underline; font-size: 18px; margin-bottom: 30px; text-transform: uppercase;">
+              PROVISIONAL OFFER OF ADMISSION
+          </div>
+
+          <div style="margin-bottom: 20px;">
+              Dear <span id="studentFirstName">Student</span>,
+          </div>
+
+          <p>
+              I am pleased to inform you that you have been offered provisional admission into <b>El-anNexus Academy</b> 
+              to pursue your academy pursuit in our <b id="studentClass">Class Level</b> program for the current academic session.
+          </p>
+
+          <p>
+              This offer is based on the information provided in your application and is subject to the following conditions:
+          </p>
+          <ol>
+              <li>Verification of your original academic credentials.</li>
+              <li>Payment of the prescribed acceptance and tuition fees within the stipulated deadline.</li>
+              <li>Successful completion of a medical examination at the school's clinic.</li>
+              <li>Satisfactory character reference from your previous institution.</li>
+          </ol>
+
+          <p>
+              Please note that the school reserves the right to withdraw this offer at any time if any of the information provided in your application is found to be false.
+          </p>
+
+          <p>
+              We look forward to welcoming you to our vibrant academic community. Congratulations on your admission!
+          </p>
+
+          <div style="margin-top: 60px; display: flex; justify-content: flex-end;">
+              <div style="text-align: center;">
+                  <img src="../assets/images/signature.png" style="width: 120px; display: block; margin: 0 auto 5px auto;" alt="sign">
+                  <div style="border-top: 1px solid #000; padding-top: 5px;">
+                      <b>Proprietress (Academic)</b><br/>
+                      For: Management
+                  </div>
+              </div>
+          </div>
+          
+          <div style="margin-top: 100px; text-align: center; font-size: 10px; color: #666; border-top: 1px dashed #ccc;">
+              This is a computer-generated document and is valid with an official stamp or verification code.
+          </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, renderSidebar, currentUser } from "../assets/js/app.js";
+    import { mountMobileShell } from "../assets/js/mobile-shell.js";
+    
+    requireAuth();
+    renderSidebar();
+    mountMobileShell("enroll"); // Reuse enroll icon for documents
+
+    window.printAdmissionLetter = async () => {
+        const user = await currentUser();
+        if (!user) return;
+
+        // Populate Letter
+        document.getElementById('studentName').textContent = user.fullName;
+        document.getElementById('studentFirstName').textContent = user.firstName || user.fullName.split(' ')[0];
+        document.getElementById('studentEmail').textContent = user.email;
+        document.getElementById('studentPhone').textContent = user.phone || 'N/A';
+        document.getElementById('studentClass').textContent = user.classLevel || 'JS 1';
+        
+        const adDate = user.createdAt ? new Date(user.createdAt) : new Date();
+        document.getElementById('letterDate').textContent = `Date: ${adDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+
+        document.getElementById('refNumber').textContent = `Ref: EL-AN/ADM/${new Date().getFullYear()}/${Math.floor(1000 + Math.random() * 9000)}`;
+
+        // Trigger Print
+        window.print();
+    };
+  </script>
+</body>
+</html>

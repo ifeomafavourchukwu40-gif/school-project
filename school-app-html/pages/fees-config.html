@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fee Configuration</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content">
+      <div id="mobileShell"></div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
+          <div>
+            <h2 style="margin:0 0 4px 0;">Fee Configuration</h2>
+            <div class="muted">Set fee amounts per class for each term and session.</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <select id="filterSession" onchange="loadFees()" style="padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+              <option value="2025/2026">2025/2026</option>
+              <option value="2024/2025">2024/2025</option>
+              <option value="2023/2024">2023/2024</option>
+            </select>
+            <select id="filterTerm" onchange="loadFees()" style="padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+              <option value="First Term">First Term</option>
+              <option value="Second Term">Second Term</option>
+              <option value="Third Term">Third Term</option>
+            </select>
+            <button class="btn" onclick="openSetupModal()">+ Set Up Fees</button>
+          </div>
+        </div>
+
+        <!-- Fee table: one row per class, columns for each category -->
+        <div style="overflow-x:auto;">
+          <table id="feesTable" style="width:100%; border-collapse:collapse; text-align:left; min-width:700px;">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border);">
+                <th style="padding:10px;">Class</th>
+                <th style="padding:10px;">School Fees</th>
+                <th style="padding:10px;">Uniform</th>
+                <th style="padding:10px;">Books</th>
+                <th style="padding:10px;">Dormitory</th>
+                <th style="padding:10px;">Toiletries</th>
+                <th style="padding:10px;">Practical</th>
+                <th style="padding:10px;">Activities</th>
+                <th style="padding:10px;">Total</th>
+                <th style="padding:10px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="feesTableBody">
+              <tr><td colspan="10" style="padding:30px; text-align:center;" class="muted">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Setup / Edit Modal -->
+  <div id="feeModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div class="card" style="width:95%; max-width:680px; margin:0; max-height:92vh; overflow-y:auto;">
+      <h3 id="modalTitle" style="margin:0 0 16px 0;">Set Up Fees</h3>
+      <input type="hidden" id="editFeeId">
+
+      <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:140px;">
+          <label>Session</label>
+          <select id="feeSession" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+            <option value="2025/2026">2025/2026</option>
+            <option value="2024/2025">2024/2025</option>
+            <option value="2023/2024">2023/2024</option>
+          </select>
+        </div>
+        <div style="flex:1; min-width:140px;">
+          <label>Term</label>
+          <select id="feeTerm" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+            <option value="First Term">First Term</option>
+            <option value="Second Term">Second Term</option>
+            <option value="Third Term">Third Term</option>
+          </select>
+        </div>
+        <!-- shown only in edit mode -->
+        <div id="classSelectWrap" style="flex:1; min-width:120px; display:none;">
+          <label>Class</label>
+          <select id="feeClass" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+            <option value="JS 1">JS 1</option>
+            <option value="JS 2">JS 2</option>
+            <option value="JS 3">JS 3</option>
+            <option value="SS 1">SS 1</option>
+            <option value="SS 2">SS 2</option>
+            <option value="SS 3">SS 3</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Batch mode: grid of classes x categories -->
+      <div id="batchGrid" style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:13px; min-width:580px;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);">
+              <th style="padding:8px; text-align:left;">Class</th>
+              <th style="padding:8px;">School Fees</th>
+              <th style="padding:8px;">Uniform</th>
+              <th style="padding:8px;">Books</th>
+              <th style="padding:8px;">Dormitory</th>
+              <th style="padding:8px;">Toiletries</th>
+              <th style="padding:8px;">Practical</th>
+              <th style="padding:8px;">Activities</th>
+            </tr>
+          </thead>
+          <tbody id="batchBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Single edit mode -->
+      <div id="singleGrid" style="display:none; margin-top:10px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" id="singleInputs"></div>
+      </div>
+
+      <div class="btnrow" style="margin-top:20px;">
+        <button class="btn" onclick="saveFees()">Save Fees</button>
+        <button class="btn secondary" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, renderSidebar } from "../assets/js/app.js";
+    import { mountMobileShell } from "../assets/js/mobile-shell.js";
+    import { apiGet, apiPost } from "../assets/js/storage.js?v=2";
+
+    requireAuth();
+    renderSidebar();
+    mountMobileShell("enroll");
+
+    const CLASSES = ["JS 1", "JS 2", "JS 3", "SS 1", "SS 2", "SS 3"];
+    const CATS = [
+      { key: 'school_fee', label: 'School Fees' },
+      { key: 'uniform',    label: 'Uniform' },
+      { key: 'books',      label: 'Books' },
+      { key: 'dormitory',  label: 'Dormitory' },
+      { key: 'toiletries', label: 'Toiletries' },
+      { key: 'practical',  label: 'Practical' },
+      { key: 'activities', label: 'Activities' },
+    ];
+
+    window.allFees = [];
+
+    window.loadFees = async function() {
+      const tbody = document.getElementById('feesTableBody');
+      tbody.innerHTML = '<tr><td colspan="10" style="padding:20px; text-align:center;" class="muted">Loading...</td></tr>';
+
+      const session = document.getElementById('filterSession').value;
+      const term    = document.getElementById('filterTerm').value;
+
+      try {
+        const fees = await apiGet(`../api/fees.php?action=list_all&session=${encodeURIComponent(session)}&term=${encodeURIComponent(term)}&_t=${Date.now()}`);
+        window.allFees = fees;
+
+        if (!fees.length) {
+          tbody.innerHTML = `<tr><td colspan="10" style="padding:30px; text-align:center;" class="muted">
+            No fees configured for ${term} (${session}).<br>Click "+ Set Up Fees" to get started.
+          </td></tr>`;
+          return;
+        }
+
+        // Index by class_name for quick lookup
+        const byClass = {};
+        fees.forEach(f => { byClass[f.class_name] = f; });
+
+        tbody.innerHTML = CLASSES.map(cls => {
+          const f = byClass[cls];
+          if (!f) {
+            return `<tr style="border-bottom:1px solid var(--border); opacity:0.4;">
+              <td style="padding:10px;"><b>${cls}</b></td>
+              ${CATS.map(() => '<td style="padding:10px;">—</td>').join('')}
+              <td style="padding:10px;">—</td>
+              <td style="padding:10px;"></td>
+            </tr>`;
+          }
+          const total = CATS.reduce((s, c) => s + parseFloat(f[c.key] || 0), 0);
+          return `<tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;"><b>${cls}</b></td>
+            ${CATS.map(c => `<td style="padding:10px;">₦${parseFloat(f[c.key]||0).toLocaleString()}</td>`).join('')}
+            <td style="padding:10px; font-weight:bold;">₦${total.toLocaleString()}</td>
+            <td style="padding:10px;">
+              <button class="btn secondary" style="padding:6px 10px; font-size:12px;" onclick="editFee('${f.id}')">Edit</button>
+              <button class="btn" style="padding:6px 10px; font-size:12px; background:rgba(220,53,69,0.1); color:#dc3545; border:none;" onclick="deleteFee('${f.id}')">Delete</button>
+            </td>
+          </tr>`;
+        }).join('');
+      } catch(err) {
+        tbody.innerHTML = `<tr><td colspan="10" style="padding:20px; text-align:center; color:red;">${err.message}</td></tr>`;
+      }
+    };
+
+    window.openSetupModal = function() {
+      document.getElementById('editFeeId').value = '';
+      document.getElementById('modalTitle').textContent = 'Set Up Fees (Batch)';
+      document.getElementById('feeSession').value = document.getElementById('filterSession').value;
+      document.getElementById('feeTerm').value    = document.getElementById('filterTerm').value;
+      document.getElementById('batchGrid').style.display = '';
+      document.getElementById('singleGrid').style.display = 'none';
+      document.getElementById('classSelectWrap').style.display = 'none';
+
+      // Build batch rows, pre-filling any existing data
+      const byClass = {};
+      window.allFees.forEach(f => { byClass[f.class_name] = f; });
+
+      const tbody = document.getElementById('batchBody');
+      tbody.innerHTML = CLASSES.map(cls => {
+        const f = byClass[cls] || {};
+        return `<tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px; font-weight:bold;">${cls}</td>
+          ${CATS.map(c => `<td style="padding:4px;">
+            <input type="number" class="batch-inp" data-class="${cls}" data-cat="${c.key}"
+              value="${f[c.key] || ''}" placeholder="0"
+              style="width:80px; padding:6px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--fg);">
+          </td>`).join('')}
+        </tr>`;
+      }).join('');
+
+      document.getElementById('feeModal').style.display = 'flex';
+    };
+
+    window.editFee = function(id) {
+      const fee = window.allFees.find(f => f.id === id);
+      if (!fee) return;
+
+      document.getElementById('editFeeId').value = id;
+      document.getElementById('modalTitle').textContent = `Edit Fees — ${fee.class_name}`;
+      document.getElementById('feeSession').value = fee.session || fee.year || '2025/2026';
+      document.getElementById('feeTerm').value    = fee.term;
+      document.getElementById('batchGrid').style.display = 'none';
+      document.getElementById('singleGrid').style.display = '';
+      document.getElementById('classSelectWrap').style.display = '';
+      document.getElementById('feeClass').value   = fee.class_name;
+
+      const container = document.getElementById('singleInputs');
+      container.innerHTML = CATS.map(c => `
+        <div>
+          <label>${c.label} (₦)</label>
+          <input type="number" id="cat_${c.key}" value="${fee[c.key] || 0}" placeholder="0">
+        </div>
+      `).join('');
+
+      document.getElementById('feeModal').style.display = 'flex';
+    };
+
+    window.closeModal = function() {
+      document.getElementById('feeModal').style.display = 'none';
+    };
+
+    window.saveFees = async function() {
+      const editId  = document.getElementById('editFeeId').value;
+      const session = document.getElementById('feeSession').value;
+      const term    = document.getElementById('feeTerm').value;
+
+      try {
+        if (editId) {
+          // Single row update
+          const data = { id: editId, session, term, class_name: document.getElementById('feeClass').value };
+          CATS.forEach(c => { data[c.key] = document.getElementById('cat_' + c.key).value || 0; });
+          await apiPost('../api/fees.php?action=update', data);
+        } else {
+          // Batch upsert
+          const rows = [];
+          CLASSES.forEach(cls => {
+            const row = { class_name: cls };
+            let hasAny = false;
+            CATS.forEach(c => {
+              const inp = document.querySelector(`.batch-inp[data-class="${cls}"][data-cat="${c.key}"]`);
+              const val = inp ? parseFloat(inp.value) || 0 : 0;
+              row[c.key] = val;
+              if (val > 0) hasAny = true;
+            });
+            if (hasAny) rows.push(row);
+          });
+
+          if (!rows.length) { alert('Please enter at least one fee amount.'); return; }
+          await apiPost('../api/fees.php?action=batch_add', { session, term, rows });
+        }
+
+        closeModal();
+        loadFees();
+      } catch(err) {
+        alert('Error: ' + err.message);
+      }
+    };
+
+    window.deleteFee = async function(id) {
+      if (!confirm('Delete this fee row?')) return;
+      try {
+        await apiPost('../api/fees.php?action=delete', { id });
+        loadFees();
+      } catch(err) { alert(err.message); }
+    };
+
+    loadFees();
+  </script>
+</body>
+</html>

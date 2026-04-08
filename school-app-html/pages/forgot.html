@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Forgot Password</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <!-- Page Preloader -->
+  <div class="page-preloader" id="pagePreloader">
+    <img src="../assets/images/re-load.png" alt="Loading" class="preloader-image">
+   
+  </div>
+  
+  <div class="content" style="max-width:560px;margin:20px auto;">
+    <div class="card">
+      <h2 style="margin:0 0 6px">Forgot Password</h2>
+      <div class="muted">This demo app uses local storage. You can create a new account instead.</div>
+      
+      <div class="btnrow" style="margin-top:12px">
+        <a class="btn secondary" href="./signup.html">Create New Account</a>
+        <a class="btn secondary" href="./login.html">Back to Login</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initTheme } from "../../assets/js/app.js";
+    
+    // Hide preloader when page is fully loaded
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const preloader = document.getElementById('pagePreloader');
+        if (preloader) {
+          preloader.classList.add('fade-out');
+        }
+      }, 500);
+    });
+    
+    initTheme();
+  </script>
+</body>
+</html>

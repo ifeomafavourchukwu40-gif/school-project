@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login</title>
+  <link rel="icon" type="image/png" href="../assets/images/logo.png">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    body {
+      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('../assets/images/home.JPG');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      width: 100%;
+      max-width: 450px;
+      padding: 20px;
+      margin: 0 auto;
+    }
+    .card {
+      backdrop-filter: blur(8px);
+      background: rgba(var(--panel-rgb, 255, 255, 255), 0.95) !important;
+    }
+    html[data-theme="dark"] .card {
+      background: rgba(16, 26, 51, 0.9) !important;
+    }
+  </style>
+</head>
+<body>
+<div class="page-preloader" id="pagePreloader">
+  <img src="../assets/images/re-load.png" alt="Loading" class="preloader-image">
+</div>
+
+  <div class="login-container">
+    <div class="card">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+        <img src="../assets/images/logo.png" alt="logo"
+             style="width:44px; height:44px; border-radius:12px; background:#fff; padding:6px; border:1px solid var(--border); object-fit:contain;">
+        <div>
+          <h2 style="margin:0;">Login</h2>
+          <div class="muted">Sign in to continue.</div>
+        </div>
+      </div>
+
+      <div id="msg" class="card" style="display:none; margin-top:12px;"></div>
+
+      <form id="loginForm" style="margin-top:10px;">
+        <label>Email</label>
+        <input name="email" type="email" required placeholder="example@email.com" />
+
+        <label>Password</label>
+        <div style="position:relative;">
+          <input id="password" name="password" type="password" required placeholder="••••••" style="padding-right:44px;" />
+          <button type="button" id="togglePwd" aria-label="Show password"
+            style="position:absolute; right:8px; top:50%; transform:translateY(-50%);
+                   border:1px solid var(--border); background:transparent; color:var(--text);
+                   width:34px; height:34px; border-radius:10px; cursor:pointer;
+                   display:flex; align-items:center; justify-content:center;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 15a3 3 0 1 0-3-3 3 3 0 0 0 3 3Z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="btnrow" style="margin-top:16px;">
+          <button class="btn" type="submit" id="submitBtn">Sign In</button>
+          <a class="btn secondary" href="./signup.html">Sign Up</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { getSession, setSession, apiPost } from "../assets/js/storage.js";
+    import { initTheme } from "../assets/js/app.js";
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const p = document.getElementById('pagePreloader');
+        if (p) p.classList.add('fade-out');
+      }, 500);
+    });
+
+    initTheme();
+
+    // Already logged in?
+    if (getSession()) location.href = "./home.html";
+
+    const form = document.getElementById('loginForm');
+    const msg  = document.getElementById('msg');
+    const pwd  = document.getElementById('password');
+
+    document.getElementById('togglePwd')?.addEventListener('click', () => {
+      pwd.type = pwd.type === 'password' ? 'text' : 'password';
+    });
+
+    function showMsg(text, isError = false) {
+      msg.style.display    = 'block';
+      msg.style.borderColor = isError ? 'rgba(255,0,0,.35)' : 'var(--border)';
+      msg.textContent      = text;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      btn.disabled    = true;
+      btn.textContent = 'Signing in…';
+
+      const data = new FormData(form);
+      try {
+        const res = await apiPost('../api/auth.php?action=login', {
+          email:    data.get('email'),
+          password: data.get('password'),
+        });
+        setSession({ userId: res.id, role: res.role });
+        location.href = './home.html';
+      } catch(err) {
+        showMsg(err.message || 'Login failed', true);
+        btn.disabled    = false;
+        btn.textContent = 'Sign In';
+      }
+    });
+  </script>
+</body>
+</html>
